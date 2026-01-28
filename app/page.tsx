@@ -61,14 +61,14 @@ export default async function LandingPage() {
       </header>
 
       {/* --- HERO SECTION --- */}
-      <section className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20 bg-gradient-to-b from-white to-slate-100">
+      <section className="flex-1 flex flex-col items-center justify-center text-center px-4 py-20 bg-linear-to-b from-white to-slate-100">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-100 text-purple-700 text-sm font-semibold mb-6">
             <BrainCircuit className="h-4 w-4" /> Yapay Zeka Destekli Finans Yönetimi
         </div>
         
         <h1 className="text-4xl md:text-6xl font-extrabold text-slate-900 leading-tight max-w-4xl mb-6">
             KOBİ&apos;lerin Yeni Nesil <br/>
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-purple-600 to-blue-600">
                 Dijital CFO&apos;su
             </span>
         </h1>
