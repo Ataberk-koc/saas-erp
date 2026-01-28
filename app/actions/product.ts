@@ -45,7 +45,7 @@ export async function addProduct(formData: FormData) {
 
     revalidatePath("/dashboard/products")
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Ürün eklenirken hata oluştu." }
   }
 }
@@ -68,7 +68,7 @@ export async function deleteProduct(id: string) {
 
     revalidatePath("/dashboard/products")
     return { success: true }
-  } catch (error) {
+  } catch{
     return { error: "Silinirken hata oluştu (Faturada kullanılıyor olabilir)." }
   }
 }
@@ -110,7 +110,7 @@ export async function updateProduct(id: string, formData: FormData) {
 
     revalidatePath("/dashboard/products")
     redirect("/dashboard/products") // İşlem bitince listeye dön
-  } catch (error) {
+  } catch {
     return { error: "Güncellenirken hata oluştu." }
   }
 }

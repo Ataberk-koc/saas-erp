@@ -54,7 +54,7 @@ export default function AiPage() {
                 </Button>
             </CardTitle>
         </CardHeader>
-        <CardContent className="p-8 min-h-[300px] flex flex-col justify-center">
+        <CardContent className="p-8 min-h-75 flex flex-col justify-center">
             
             {/* Yükleniyor Animasyonu */}
             {loading && (

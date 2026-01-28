@@ -67,7 +67,7 @@ export function DashboardAiCard() {
 
         {/* Rapor Sonucu (Scroll Edilebilir Alan) */}
         {!loading && report.length > 0 && (
-            <div className="mt-2 space-y-2 max-h-[250px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
+            <div className="mt-2 space-y-2 max-h-62.5 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-slate-200">
                 {report.map((line, index) => {
                     // Başlıklar
                     if (line.startsWith('**') || line.includes('**')) {

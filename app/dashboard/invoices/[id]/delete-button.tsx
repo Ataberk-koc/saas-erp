@@ -27,7 +27,7 @@ export default function DeleteButton({ invoiceId }: { invoiceId: string }) {
         showErrorToast(result.error || "Silme işlemi başarısız oldu!")
         setShowConfirm(false)
       }
-    } catch (error) {
+    } catch {
       showErrorToast("Bir hata oluştu!")
       setShowConfirm(false)
     } finally {

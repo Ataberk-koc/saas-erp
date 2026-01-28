@@ -83,7 +83,7 @@ export async function deleteCustomer(id: string) {
 
     revalidatePath("/dashboard/customers")
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Müşteri silinirken hata oluştu." }
   }
 }

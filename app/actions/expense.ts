@@ -35,7 +35,7 @@ export async function addExpense(formData: FormData) {
     revalidatePath("/dashboard/expenses")
     revalidatePath("/dashboard") // Dashboard'daki kar hesabını etkiler
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Gider eklenirken hata oluştu." }
   }
 }
@@ -53,7 +53,7 @@ export async function deleteExpense(id: string) {
     revalidatePath("/dashboard/expenses")
     revalidatePath("/dashboard")
     return { success: true }
-  } catch (error) {
+  } catch {
     return { error: "Silinirken hata oluştu." }
   }
 }
