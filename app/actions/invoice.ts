@@ -4,7 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { InvoiceStatus } from "@prisma/client"
-
+import { checkLimit } from "@/app/actions/limiter"
 // 👇 YENİ: Fatura Kalemi için Tip Tanımı
 // Bu sayede "any" kullanmak zorunda kalmıyoruz.
 interface InvoiceItemInput {
@@ -25,6 +25,11 @@ export async function createInvoice(formData: FormData) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
 
+  const hasLimit = await checkLimit("invoices")
+  if (!hasLimit) {
+    return { error: "⚠️ Ücretsiz paket limitiniz doldu (Max 5 Fatura). Lütfen Pro pakete geçin." }
+  }
+  
   // FormData'dan parametreleri çıkar
   const customerId = formData.get("customerId") as string
   const productId = formData.get("productId") as string

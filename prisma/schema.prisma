@@ -16,7 +16,9 @@ model Tenant {
   taxOffice String?  // Vergi Dairesi
   taxNumber String?  // Vergi Numarası
   address   String?  // Şirket Adresi (Faturada görünsün diye)
-  
+
+  plan      Plan     @default(FREE)
+
   // 👇 YENİ EKLENECEKLER (İletişim & Banka)
   phone     String?
   email     String?  // Şirketin kurumsal maili
@@ -44,6 +46,12 @@ model User {
   
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
 }
 
 // 3. CARİ HESAPLAR
