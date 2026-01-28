@@ -233,7 +233,7 @@ export default async function LandingPage() {
                         <span className="text-slate-500">/ay</span>
                     </div>
                     <p className="text-sm text-slate-500 mb-6">Büyük ekipler için.</p>
-                    <Link href="/contact">
+                    <Link href="#contact">
                         <Button variant="outline" className="w-full mb-6">İletişime Geç</Button>
                     </Link>
                     <ul className="space-y-3 text-sm text-slate-600">
