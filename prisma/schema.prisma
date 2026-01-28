@@ -1,0 +1,143 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+// 1. TENANT (Firma)
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  taxOffice String?  // Vergi Dairesi
+  taxNumber String?  // Vergi Numarası
+  address   String?  // Şirket Adresi (Faturada görünsün diye)
+  
+  // 👇 YENİ EKLENECEKLER (İletişim & Banka)
+  phone     String?
+  email     String?  // Şirketin kurumsal maili
+  website   String?
+  iban      String?  // Banka IBAN
+  
+  expenses Expense[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  customers  Customer[]
+  products   Product[]
+  invoices   Invoice[]
+  aiAnalyses AiAnalysis[]
+}
+
+// 2. KULLANICILAR
+model User {
+  id       String @id @default(uuid())
+  email    String @unique
+  password String
+  name     String?
+  
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+}
+
+// 3. CARİ HESAPLAR
+model Customer {
+  id        String   @id @default(uuid())
+  name      String
+  email     String?
+  phone     String?
+  type      String   // "BUYER", "SUPPLIER"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  address   String?
+
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  invoices  Invoice[]
+}
+
+// 4. ÜRÜNLER
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  price     Decimal
+  stock     Int      @default(0)
+  vatRate   Int      @default(20)
+
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+  
+  invoiceItems InvoiceItem[]
+}
+
+// 5. FATURALAR
+model Invoice {
+  id        String   @id @default(uuid())
+  number    Int
+  date      DateTime @default(now())
+  dueDate   DateTime?
+  vatRate   Int     @default(20)
+  status    InvoiceStatus @default(PENDING)
+
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+
+  items      InvoiceItem[]
+}
+
+// 6. FATURA KALEMLERİ
+model InvoiceItem {
+  id        String  @id @default(uuid())
+  quantity  Int
+  price     Decimal
+  vatRate   Int     @default(20) 
+
+  invoiceId String
+  invoice   Invoice @relation(fields: [invoiceId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+// 7. AI ANALİZ RAPORLARI
+model AiAnalysis {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  type      String   // "WEEKLY_SUMMARY", "RISK_ALERT"
+  content   String   // AI çıktısı
+  suggestions Json? 
+
+  tenantId  String
+  tenant    Tenant @relation(fields: [tenantId], references: [id])
+}
+
+// 2. Dosyanın EN ALTINA bu listeyi ekle
+enum InvoiceStatus {
+  PENDING   // Bekliyor
+  PAID      // Ödendi
+  CANCELLED // İptal
+  OVERDUE   // Gecikmiş (İleride otomatik yaparız)
+}
+
+model Expense {
+  id          String   @id @default(uuid())
+  description String   // Harcama açıklaması (Örn: Ofis Kirası)
+  amount      Decimal  // Tutar
+  date        DateTime @default(now()) // Harcama tarihi
+
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
