@@ -1,6 +1,6 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
-import { addCustomer, deleteCustomer } from "@/app/actions/customer" // 👈 deleteCustomer eklendi
+import { addCustomer, deleteCustomer } from "@/app/actions/customer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -42,7 +42,8 @@ export default async function CustomersPage({
   }
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen space-y-8">
+    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
       {/* --- Ekleme Formu --- */}
       <Card>
@@ -78,30 +79,32 @@ export default async function CustomersPage({
               </select>
             </div>
 
-            <Button type="submit" className="bg-blue-600 hover:bg-blue-700">Kaydet</Button>
+            {/* Mobilde buton tam genişlik olsun */}
+            <Button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">Kaydet</Button>
           </form>
         </CardContent>
       </Card>
 
       {/* --- Liste Tablosu --- */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* DÜZELTME 2: Başlık ve Arama mobilde alt alta, desktopta yan yana */}
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <CardTitle>📋 Müşteri Listesi ({customers.length})</CardTitle>
-          <div className="w-72">
+          <div className="w-full md:w-72">
              <Search placeholder="İsim veya Email ara..." />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          {/* DÜZELTME 3: Tabloya scroll özelliği (overflow-x-auto) */}
+          <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-100 border-b text-slate-500">
                 <tr>
-                  <th className="p-4 font-medium">Adı</th>
-                  <th className="p-4 font-medium">İletişim</th>
-                  <th className="p-4 font-medium">Türü</th>
-                  <th className="p-4 font-medium">Kayıt Tarihi</th>
-                  {/* 👇 YENİ SÜTUN */}
-                  <th className="p-4 font-medium text-right">İşlemler</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Adı</th>
+                  <th className="p-4 font-medium whitespace-nowrap">İletişim</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Türü</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Kayıt Tarihi</th>
+                  <th className="p-4 font-medium text-right whitespace-nowrap">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,17 +118,17 @@ export default async function CustomersPage({
                   customers.map((customer) => (
                     <tr key={customer.id} className="border-b hover:bg-slate-50 transition-colors">
                       
-                      <td className="p-4 font-medium text-slate-700">
+                      <td className="p-4 font-medium text-slate-700 whitespace-nowrap">
                         {customer.name}
                       </td>
 
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <div className="flex flex-col">
                           <span>{customer.email || "-"}</span>
                           <span className="text-xs text-slate-500">{customer.phone}</span>
                         </div>
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
                           customer.type === 'BUYER' 
                             ? 'bg-blue-100 text-blue-700' 
@@ -134,19 +137,16 @@ export default async function CustomersPage({
                           {customer.type === 'BUYER' ? 'Müşteri' : 'Tedarikçi'}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-500">
+                      <td className="p-4 text-slate-500 whitespace-nowrap">
                         {new Date(customer.createdAt).toLocaleDateString("tr-TR")}
                       </td>
                       
-                      {/* 👇 YENİ: İŞLEMLER BUTONLARI */}
-                      <td className="p-4 text-right">
+                      <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex justify-end items-center gap-2">
-                            {/* Detay Butonu */}
                             <Link href={`/dashboard/customers/${customer.id}`}>
                                 <Button size="sm" variant="outline">Detay</Button>
                             </Link>
 
-                            {/* Sil Butonu (Form içinde olmalı) */}
                             <form action={async () => {
                                 "use server"
                                 await deleteCustomer(customer.id)

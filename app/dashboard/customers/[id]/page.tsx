@@ -28,8 +28,8 @@ export default async function CustomerDetailPage({
     },
     include: {
       invoices: {
-        include: { items: true }, // Fiyat hesabı için kalemler lazım
-        orderBy: { date: 'desc' } // En yeni fatura en üstte
+        include: { items: true }, 
+        orderBy: { date: 'desc' } 
       },
     },
   })
@@ -61,21 +61,25 @@ export default async function CustomerDetailPage({
   const whatsappLink = cleanPhone ? `https://wa.me/90${cleanPhone}` : "#"
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen space-y-8">
+    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-6 md:space-y-8">
       
       {/* Üst Bar */}
-      <div className="flex justify-between items-center">
+      {/* DÜZELTME 2: Mobilde alt alta, masaüstünde yan yana */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-4">
             <Link href="/dashboard/customers">
                 <Button variant="outline">← Geri</Button>
             </Link>
-            <h1 className="text-3xl font-bold text-slate-800">{customer.name}</h1>
+            {/* Mobilde yazı boyutu ayarı */}
+            <h1 className="text-2xl md:text-3xl font-bold text-slate-800 break-all">{customer.name}</h1>
         </div>
         
         {/* Eğer telefon varsa WhatsApp butonu göster */}
         {customer.phone && (
-            <a href={whatsappLink} target="_blank" rel="noreferrer">
-                <Button className="bg-green-600 hover:bg-green-700 text-white gap-2">
+            <a href={whatsappLink} target="_blank" rel="noreferrer" className="w-full md:w-auto">
+                {/* Mobilde buton tam genişlik */}
+                <Button className="w-full md:w-auto bg-green-600 hover:bg-green-700 text-white gap-2">
                     <span>💬  &apos;WhatsApp&apos;tan Yaz</span>
                 </Button>
             </a>
@@ -92,7 +96,7 @@ export default async function CustomerDetailPage({
             <CardContent className="space-y-4 pt-6">
                 <div>
                     <span className="text-xs text-slate-500 font-bold uppercase">E-Posta</span>
-                    <p className="text-slate-700">{customer.email || "-"}</p>
+                    <p className="text-slate-700 break-all">{customer.email || "-"}</p>
                 </div>
                 <div>
                     <span className="text-xs text-slate-500 font-bold uppercase">Telefon</span>
@@ -111,17 +115,17 @@ export default async function CustomerDetailPage({
             {/* Özet Kartları */}
             <div className="grid grid-cols-2 gap-4">
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 md:p-6">
                         <p className="text-sm font-medium text-slate-500">Toplam Ciro</p>
-                        <h3 className="text-2xl font-bold text-green-600 mt-1">
+                        <h3 className="text-xl md:text-2xl font-bold text-green-600 mt-1">
                             {formatCurrency(totalRevenue)}
                         </h3>
                     </CardContent>
                 </Card>
                 <Card>
-                    <CardContent className="p-6">
+                    <CardContent className="p-4 md:p-6">
                         <p className="text-sm font-medium text-slate-500">Kesilen Fatura</p>
-                        <h3 className="text-2xl font-bold text-slate-800 mt-1">
+                        <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">
                             {customer.invoices.length} Adet
                         </h3>
                     </CardContent>
@@ -134,56 +138,59 @@ export default async function CustomerDetailPage({
                     <CardTitle>📄 Fatura Geçmişi</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <table className="w-full text-sm text-left">
-                        <thead className="bg-slate-50 text-slate-500">
-                            <tr>
-                                <th className="p-3">Fatura No</th>
-                                <th className="p-3">Tarih</th>
-                                <th className="p-3 text-right">Tutar</th>
-                                <th className="p-3 text-center">Durum</th>
-                                <th className="p-3"></th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {customer.invoices.length === 0 ? (
-                                <tr><td colSpan={5} className="p-4 text-center text-slate-500">Fatura bulunamadı.</td></tr>
-                            ) : (
-                                customer.invoices.map(inv => {
-                                    // Her faturanın kendi toplamını hesapla
-                                    const invTotal = inv.items.reduce((acc, item) => {
-                                        const total = Number(item.price) * item.quantity
-                                        return acc + total + (total * (item.vatRate / 100))
-                                    }, 0)
+                    {/* DÜZELTME 3: Tabloya scroll özelliği */}
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                            <thead className="bg-slate-50 text-slate-500">
+                                <tr>
+                                    <th className="p-3 whitespace-nowrap">Fatura No</th>
+                                    <th className="p-3 whitespace-nowrap">Tarih</th>
+                                    <th className="p-3 text-right whitespace-nowrap">Tutar</th>
+                                    <th className="p-3 text-center whitespace-nowrap">Durum</th>
+                                    <th className="p-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {customer.invoices.length === 0 ? (
+                                    <tr><td colSpan={5} className="p-4 text-center text-slate-500">Fatura bulunamadı.</td></tr>
+                                ) : (
+                                    customer.invoices.map(inv => {
+                                        // Her faturanın kendi toplamını hesapla
+                                        const invTotal = inv.items.reduce((acc, item) => {
+                                            const total = Number(item.price) * item.quantity
+                                            return acc + total + (total * (item.vatRate / 100))
+                                        }, 0)
 
-                                    return (
-                                        <tr key={inv.id} className="border-b hover:bg-slate-50">
-                                            <td className="p-3 font-medium">#{inv.number}</td>
-                                            <td className="p-3 text-slate-500">
-                                                {new Date(inv.date).toLocaleDateString("tr-TR")}
-                                            </td>
-                                            <td className="p-3 text-right font-bold text-slate-700">
-                                                {formatCurrency(invTotal)}
-                                            </td>
-                                            <td className="p-3 text-center">
-                                                <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
-                                                  inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                                                  inv.status === 'PENDING' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                                                  'bg-red-100 text-red-700 border-red-200'
-                                                }`}>
-                                                  {inv.status === 'PAID' ? 'ÖDENDİ' : inv.status === 'PENDING' ? 'BEKLİYOR' : 'İPTAL'}
-                                                </span>
-                                            </td>
-                                            <td className="p-3 text-right">
-                                                <Link href={`/dashboard/invoices/${inv.id}`} className="text-blue-600 hover:underline text-xs">
-                                                    Detay →
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    )
-                                })
-                            )}
-                        </tbody>
-                    </table>
+                                        return (
+                                            <tr key={inv.id} className="border-b hover:bg-slate-50">
+                                                <td className="p-3 font-medium whitespace-nowrap">#{inv.number}</td>
+                                                <td className="p-3 text-slate-500 whitespace-nowrap">
+                                                    {new Date(inv.date).toLocaleDateString("tr-TR")}
+                                                </td>
+                                                <td className="p-3 text-right font-bold text-slate-700 whitespace-nowrap">
+                                                    {formatCurrency(invTotal)}
+                                                </td>
+                                                <td className="p-3 text-center whitespace-nowrap">
+                                                    <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                                                    inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                                    inv.status === 'PENDING' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                                    'bg-red-100 text-red-700 border-red-200'
+                                                    }`}>
+                                                    {inv.status === 'PAID' ? 'ÖDENDİ' : inv.status === 'PENDING' ? 'BEKLİYOR' : 'İPTAL'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-3 text-right whitespace-nowrap">
+                                                    <Link href={`/dashboard/invoices/${inv.id}`} className="text-blue-600 hover:underline text-xs">
+                                                        Detay →
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </CardContent>
             </Card>
 

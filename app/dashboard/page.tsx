@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
-import { DashboardAiCard } from "@/components/dashboard/ai-card" // 👈 Import Tamam
+import { DashboardAiCard } from "@/components/dashboard/ai-card"
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -72,16 +72,16 @@ export default async function DashboardPage() {
   }
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen space-y-8">
-      
-      <div className="flex justify-between items-center">
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-6 md:space-y-8">      
+      {/* 👇 DÜZELTME 1: Başlık alanı mobilde alt alta, desktopta yan yana */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-3xl font-bold text-slate-800">Genel Bakış</h1>
         <div className="text-sm text-slate-500">
            Hoş geldin, <span className="font-semibold text-slate-800">{user?.name}</span>
         </div>
       </div>
 
-      {/* 👇 YENİ: AI KARTINI BURAYA YERLEŞTİRDİK */}
+      {/* AI KARTINI BURAYA YERLEŞTİRDİK */}
       <div className="w-full">
          <DashboardAiCard />
       </div>
@@ -178,46 +178,50 @@ export default async function DashboardPage() {
                <CardTitle>Son Kesilen Faturalar</CardTitle>
              </CardHeader>
              <CardContent>
-               <table className="w-full text-sm text-left">
-                 <thead className="text-slate-500 bg-slate-50 border-b">
-                   <tr>
-                     <th className="p-3 font-medium">Müşteri</th>
-                     <th className="p-3 font-medium text-right">Tutar</th>
-                     <th className="p-3 font-medium text-center">Durum</th>
-                     <th className="p-3 font-medium text-right">Tarih</th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {invoices.slice(0, 5).map(inv => {
-                      const total = inv.items.reduce((acc, item) => {
-                        const line = Number(item.price) * item.quantity
-                        return acc + line + (line * (item.vatRate/100))
-                      }, 0)
+               {/* 👇 DÜZELTME 2: Tabloya scroll özelliği eklendi */}
+               <div className="overflow-x-auto">
+                 <table className="w-full text-sm text-left">
+                   <thead className="text-slate-500 bg-slate-50 border-b">
+                     <tr>
+                       <th className="p-3 font-medium">Müşteri</th>
+                       <th className="p-3 font-medium text-right">Tutar</th>
+                       <th className="p-3 font-medium text-center">Durum</th>
+                       <th className="p-3 font-medium text-right">Tarih</th>
+                     </tr>
+                   </thead>
+                   <tbody>
+                     {invoices.slice(0, 5).map(inv => {
+                        const total = inv.items.reduce((acc, item) => {
+                          const line = Number(item.price) * item.quantity
+                          return acc + line + (line * (item.vatRate/100))
+                        }, 0)
 
-                      return (
-                        <tr key={inv.id} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
-                          <td className="p-3 font-medium text-slate-700">{inv.customer.name}</td>
-                          <td className="p-3 font-bold text-slate-700 text-right">{formatCurrency(total)}</td>
-                          <td className="p-3 text-center">
-                            <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
-                              inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
-                              inv.status === 'PENDING' ? 'bg-amber-100 text-amber-700 border-amber-200' :
-                              'bg-red-100 text-red-700 border-red-200'
-                            }`}>
-                              {inv.status === 'PAID' ? 'ÖDENDİ' : inv.status === 'PENDING' ? 'BEKLİYOR' : 'İPTAL'}
-                            </span>
-                          </td>
-                          <td className="p-3 text-slate-400 text-xs text-right">
-                             {new Date(inv.date).toLocaleDateString('tr-TR')}
-                          </td>
-                        </tr>
-                      )
-                   })}
-                   {invoices.length === 0 && (
-                     <tr><td colSpan={4} className="p-6 text-center text-slate-500">Henüz hiç fatura kesilmemiş.</td></tr>
-                   )}
-                 </tbody>
-               </table>
+                        return (
+                          <tr key={inv.id} className="border-b last:border-0 hover:bg-slate-50 transition-colors">
+                            <td className="p-3 font-medium text-slate-700">{inv.customer.name}</td>
+                            <td className="p-3 font-bold text-slate-700 text-right">{formatCurrency(total)}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-2 py-1 rounded text-[10px] font-bold border ${
+                                inv.status === 'PAID' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' :
+                                inv.status === 'PENDING' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                                'bg-red-100 text-red-700 border-red-200'
+                              }`}>
+                                {inv.status === 'PAID' ? 'ÖDENDİ' : inv.status === 'PENDING' ? 'BEKLİYOR' : 'İPTAL'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-400 text-xs text-right">
+                               {new Date(inv.date).toLocaleDateString('tr-TR')}
+                            </td>
+                          </tr>
+                        )
+                     })}
+                     {invoices.length === 0 && (
+                       <tr><td colSpan={4} className="p-6 text-center text-slate-500">Henüz hiç fatura kesilmemiş.</td></tr>
+                     )}
+                   </tbody>
+                 </table>
+               </div>
+               
                <div className="pt-4 border-t mt-4 text-center">
                  <Link href="/dashboard/invoices" className="text-blue-600 text-sm font-medium hover:underline flex items-center justify-center gap-1">
                    Tüm Faturaları Gör <span>→</span>
@@ -268,4 +272,4 @@ export default async function DashboardPage() {
       </div>
     </div>
   )
-} 
+}

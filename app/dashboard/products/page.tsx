@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import Search from "@/components/search"; // Arama bileşeni
+import Search from "@/components/search";
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }>; // URL'den parametre alma
+  searchParams?: Promise<{ q?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.email) redirect("/login");
@@ -24,14 +24,13 @@ export default async function ProductsPage({
   const params = await searchParams;
   const query = params?.q || "";
 
-  // 2. Ürünleri Çek (FİLTRELEYEREK)
+  // 2. Ürünleri Çek
   const products = await prisma.product.findMany({
     where: { 
       tenantId: user?.tenantId,
-      // 👇 İŞTE EKSİK OLAN KISIM BURASIYDI:
       name: {
-        contains: query, // İçinde 'query' geçenleri getir
-        mode: "insensitive", // Büyük/küçük harf takılma
+        contains: query,
+        mode: "insensitive",
       }
     },
     orderBy: { id: "desc" },
@@ -43,7 +42,9 @@ export default async function ProductsPage({
   }
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen space-y-8">
+    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
+      
       {/* --- Ekleme Formu --- */}
       <Card>
         <CardHeader>
@@ -91,29 +92,32 @@ export default async function ProductsPage({
               </select>
             </div>
 
-            <Button type="submit">Ekle</Button>
+            {/* DÜZELTME 2: Buton mobilde tam genişlik */}
+            <Button type="submit" className="w-full md:w-auto">Ekle</Button>
           </form>
         </CardContent>
       </Card>
 
       {/* --- Liste Tablosu --- */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        {/* DÜZELTME 3: Başlık ve Arama mobilde alt alta, desktopta yan yana */}
+        <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <CardTitle>📋 Ürün Listesi ({products.length})</CardTitle>
-          <div className="w-72">
+          <div className="w-full md:w-72">
              <Search placeholder="Ürün adı ara..." />
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          {/* DÜZELTME 4: Tabloya scroll özelliği (overflow-x-auto) */}
+          <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-100 border-b">
                 <tr>
-                  <th className="p-4 font-medium">Ürün Adı</th>
-                  <th className="p-4 font-medium">Fiyat</th>
-                  <th className="p-4 font-medium">KDV</th>
-                  <th className="p-4 font-medium">Stok</th>
-                  <th className="p-4 font-medium text-right">İşlemler</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Ürün Adı</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Fiyat</th>
+                  <th className="p-4 font-medium whitespace-nowrap">KDV</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Stok</th>
+                  <th className="p-4 font-medium text-right whitespace-nowrap">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,17 +130,17 @@ export default async function ProductsPage({
                 ) : (
                   products.map((product) => (
                     <tr key={product.id} className="border-b hover:bg-slate-50">
-                      <td className="p-4 font-medium">{product.name}</td>
-                      <td className="p-4 font-bold text-green-600">
+                      <td className="p-4 font-medium whitespace-nowrap">{product.name}</td>
+                      <td className="p-4 font-bold text-green-600 whitespace-nowrap">
                         {new Intl.NumberFormat("tr-TR", {
                           style: "currency",
                           currency: "TRY",
                         }).format(Number(product.price))}
                       </td>
-                      <td className="p-4 text-slate-600">
+                      <td className="p-4 text-slate-600 whitespace-nowrap">
                         %{product.vatRate}{" "}
                       </td>
-                      <td className="p-4">
+                      <td className="p-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 rounded text-xs font-bold ${
                             product.stock > 0
@@ -147,7 +151,7 @@ export default async function ProductsPage({
                           {product.stock} Adet
                         </span>
                       </td>
-                      <td className="p-4 flex justify-end gap-2">
+                      <td className="p-4 flex justify-end gap-2 whitespace-nowrap">
                         <Link href={`/dashboard/products/${product.id}/edit`}>
                           <Button variant="outline" size="sm" className="h-8">
                             ✏️ Düzenle
