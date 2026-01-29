@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // 👇 Iyzico gibi eski kütüphaneleri derlemeyip dışarıda bırakıyoruz
+  serverExternalPackages: ["iyzipay"],
 };
 
 export default nextConfig;
