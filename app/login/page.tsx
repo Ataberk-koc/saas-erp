@@ -50,7 +50,6 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle className="text-2xl">SaaS ERP Giriş</CardTitle>
           <CardDescription>
-            admin@demo.com / 123456
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
@@ -83,7 +82,7 @@ export default function LoginPage() {
               />
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="pt-6">
             <Button className="w-full" type="submit" disabled={loading}>
               {loading ? "Giriş Yapılıyor..." : "Giriş Yap"}
             </Button>

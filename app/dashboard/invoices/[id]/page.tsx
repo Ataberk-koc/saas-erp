@@ -7,6 +7,8 @@ import Link from "next/link";
 import PrintButton from "./print-button";
 import StatusButtons from "./status-button";
 import DeleteButton from "./delete-button"; 
+import DownloadButton from "./download-button";
+
 // Yazdırma Stili
 const printStyles = `
   @media print {
@@ -88,6 +90,7 @@ export default async function InvoiceDetailPage({
             
             <PrintButton />
             <DeleteButton invoiceId={invoice.id} />
+            <DownloadButton invoice={invoice} tenant={user?.tenant} />
         </div>
       </div>
 

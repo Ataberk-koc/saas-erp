@@ -1,45 +1,69 @@
-// auth.ts
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 import NextAuth from "next-auth"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@/lib/db"
+import Google from "next-auth/providers/google"
 import Credentials from "next-auth/providers/credentials"
-import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
 
-const prisma = new PrismaClient()
-
-export const { handlers, signIn, signOut, auth } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  session: { strategy: "jwt" },
   providers: [
+    Google,
     Credentials({
-      // Giriş formu alanlarımız
+      name: "Credentials",
       credentials: {
-        email: {},
-        password: {},
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
       },
       authorize: async (credentials) => {
-        // 1. Kullanıcıyı veritabanında ara
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-        })
-
-        if (!user) {
-          throw new Error("Kullanıcı bulunamadı.")
+        if (!credentials?.email || !credentials?.password) {
+          return null;
         }
 
-        // 2. Şifreyi kontrol et (Hash'lenmiş şifre ile karşılaştır)
+        // Kullanıcıyı bul
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email as string }
+        });
+
+        // Kullanıcı yoksa veya şifresi yoksa (sadece Google ile girdiyse)
+        if (!user || !user.password) {
+          throw new Error("Kullanıcı bulunamadı veya şifre oluşturulmamış.");
+        }
+
+        // Şifreyi kontrol et
         const isPasswordCorrect = await bcrypt.compare(
           credentials.password as string,
           user.password
-        )
+        );
 
         if (!isPasswordCorrect) {
-          throw new Error("Şifre hatalı!")
+          throw new Error("Şifre hatalı!");
         }
 
-        // 3. Her şey doğruysa kullanıcıyı içeri al
-        return user
-      },
-    }),
+        return user;
+      }
+    })
   ],
   pages: {
-    signIn: "/login", // Kendi yaptığımız login sayfasını kullan
+    signIn: "/login",
   },
+  callbacks: {
+    async session({ session, token }) {
+      if (session.user && token.sub) {
+        session.user.id = token.sub;
+        // @ts-ignore
+        session.user.tenantId = token.tenantId as string;
+      }
+      return session;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        // @ts-ignore
+        token.tenantId = user.tenantId;
+      }
+      return token;
+    }
+  }
 })
