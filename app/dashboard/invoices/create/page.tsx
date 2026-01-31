@@ -1,9 +1,8 @@
-// app/dashboard/invoices/create/page.tsx
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
-import CreateInvoiceForm from "./form"
+// ❌ import CreateInvoiceForm from "./form" <-- Bunu kaldırdık, çünkü hata buna bağlı
+import { InvoiceForm } from "@/components/dashboard/invoice-form"; // ✅ Bunu kullanıyoruz
 
 export default async function CreateInvoicePage() {
   const session = await auth()
@@ -13,33 +12,33 @@ export default async function CreateInvoicePage() {
     where: { email: session.user.email },
   })
 
-  // Müşterileri Çek
+  // Müşterileri Çek (Alfabetik sırayla)
   const customers = await prisma.customer.findMany({
     where: { tenantId: user?.tenantId },
+    orderBy: { name: 'asc' }
   })
 
   // Ürünleri Çek
   const productsRaw = await prisma.product.findMany({
     where: { tenantId: user?.tenantId },
+    orderBy: { name: 'asc' }
   })
 
-  // 👇 DÜZELTME: Prisma'nın "Decimal" fiyatını "Number"a çeviriyoruz
-  // Böylece form.tsx içindeki "price: number" kuralına uyuyoruz.
+  // Prisma Decimal -> Number dönüşümü
   const products = productsRaw.map((product) => ({
     ...product,
-    price: Number(product.price), // Decimal -> Number dönüşümü
+    price: Number(product.price),
   }))
 
   return (
-    <div className="p-10 bg-slate-50 min-h-screen flex justify-center">
-      <Card className="w-full max-w-3xl">
-        <CardHeader>
-          <CardTitle>🧾 Yeni Fatura Kes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CreateInvoiceForm customers={customers} products={products} />
-        </CardContent>
-      </Card>
+    <div className="max-w-5xl mx-auto py-10 px-4">
+       <h1 className="text-3xl font-bold mb-8 text-slate-800">🧾 Yeni Fatura Kes</h1>
+       
+       {/* Eski <CreateInvoiceForm /> yerine yeni bileşeni koyuyoruz.
+          Yeni bileşenin kendi içinde Card tasarımı olduğu için 
+          dışarıdaki Card sarmalayıcısını kaldırdık (Çift çerçeve olmasın diye).
+       */}
+       <InvoiceForm customers={customers} products={products} />
     </div>
   )
 }

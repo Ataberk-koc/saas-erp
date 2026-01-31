@@ -7,10 +7,11 @@ export const sendPasswordResetEmail = async (
   token: string
 ) => {
   // Reset linki (Domain'i canlıya alınca değiştirmeyi unutma)
-  const resetLink = `http://localhost:3000/new-password?token=${token}`;
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const resetLink = `${baseUrl}/new-password?token=${token}`;
 
   await resend.emails.send({
-    from: "onboarding@resend.dev", // Kendi domainin varsa onu yaz
+    from: "ataberkkoc34@icloud.com",
     to: email,
     subject: "Şifrenizi Sıfırlayın - ATA Yazılım",
     html: `<p>Şifrenizi sıfırlamak için <a href="${resetLink}">buraya tıklayın</a>.</p>`

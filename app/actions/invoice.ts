@@ -22,6 +22,10 @@ export async function createInvoice(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
 
+    if (session.user.role !== "ADMIN") {
+    return { error: "Fatura silme yetkiniz yok! Sadece Admin silebilir." }
+  }
+  
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
 
