@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface SidebarProps {
-  // 👇 DÜZELTME 1: 'any' yerine user'ın içindeki muhtemel verileri tanımladık
   user?: {
     name?: string | null;
     email?: string | null;
@@ -22,7 +21,7 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
 
   return (
     <>
-      {/* --- MOBİL ÜST BAR (Sadece Mobilde Görünür) --- */}
+      {/* --- MOBİL ÜST BAR --- */}
       <div className="md:hidden flex items-center justify-between p-4 bg-slate-900 text-white border-b border-slate-800">
         <span className="font-bold tracking-wide">ATA Yazılım</span>
         <Button
@@ -35,15 +34,14 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
         </Button>
       </div>
 
-      {/* --- SIDEBAR (Hem Mobil Hem Desktop) --- */}
+      {/* --- SIDEBAR --- */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r shadow-md flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen",
           isOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
-        {/* Logo Alanı (Desktop için) */}
-        {/* 👇 DÜZELTME 2: 'flex' kelimesini sildik. Sadece 'hidden md:flex' bıraktık. Çakışma bitti. */}
+        {/* Logo Alanı */}
         <div className="h-16 items-center px-6 border-b bg-slate-900 text-white hidden md:flex">
           <span className="text-lg font-bold tracking-wide">
             ATA Yazılım Çözümleri
@@ -76,12 +74,9 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             label="Faturalar"
             onClick={() => setIsOpen(false)}
           />
-          <SidebarLink
-            href="/dashboard/settings"
-            icon="⚙️"
-            label="Ayarlar"
-            onClick={() => setIsOpen(false)}
-          />
+          
+          {/* ❌ ESKİ HATALI SATIR BURADAYDI (SİLDİK) */}
+          
           <SidebarLink
             href="/dashboard/expense"
             icon="💸"
@@ -94,8 +89,15 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             label="AI Analiz"
             onClick={() => setIsOpen(false)}
           />
+          
+          {/* ✅ SADECE ADMIN GÖRSÜN */}
           {user?.role === "ADMIN" && (
-            <SidebarLink href="/dashboard/settings" icon="⚙️" label="Ayarlar" />
+            <SidebarLink 
+              href="/dashboard/settings" 
+              icon="⚙️" 
+              label="Ayarlar" 
+              onClick={() => setIsOpen(false)}
+            />
           )}
         </nav>
 
@@ -115,7 +117,7 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
         </div>
       </aside>
 
-      {/* --- BACKDROP (Mobilde menü açılınca arkası kararsın) --- */}
+      {/* --- BACKDROP --- */}
       {isOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 md:hidden"
