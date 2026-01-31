@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSuspense } from "react";
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { newPassword } from "@/app/actions/reset";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ function NewPasswordForm() {
     if (result?.error) {
       setError(result.error);
     } else {
-      setMessage(result?.success!);
+      setMessage(result?.success || "");
     }
   }
 
