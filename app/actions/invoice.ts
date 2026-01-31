@@ -3,10 +3,11 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { redirect } from "next/navigation"
 import { InvoiceStatus } from "@prisma/client"
 import { checkLimit } from "@/app/actions/limiter"
-// 👇 YENİ: Fatura Kalemi için Tip Tanımı
-// Bu sayede "any" kullanmak zorunda kalmıyoruz.
+
+// Fatura Kalemi için Tip Tanımı
 interface InvoiceItemInput {
   productId: string;
   quantity: number;
@@ -15,9 +16,8 @@ interface InvoiceItemInput {
 }
 
 // ---------------------------------------------------------
-// 1. FATURA OLUŞTURMA (Stok Düşmeli)
+// 1. FATURA OLUŞTURMA (Çoklu Kalem ve Stok Düşmeli)
 // ---------------------------------------------------------
-// FormData'dan parametreleri doğru şekilde çıkartıyoruz
 export async function createInvoice(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
@@ -30,34 +30,27 @@ export async function createInvoice(formData: FormData) {
     return { error: "⚠️ Ücretsiz paket limitiniz doldu (Max 5 Fatura). Lütfen Pro pakete geçin." }
   }
   
-  // FormData'dan parametreleri çıkar
+  // Form verilerini al
   const customerId = formData.get("customerId") as string
-  const productId = formData.get("productId") as string
-  const quantity = parseInt(formData.get("quantity") as string)
-  const vatRate = parseInt(formData.get("vatRate") as string)
-  const dueDate = formData.get("dueDate") as string
+  const date = formData.get("date") as string
+  const itemsString = formData.get("items") as string // JSON string olarak geliyor
 
-  if (!customerId || !productId || !quantity) {
+  if (!customerId || !date || !itemsString) {
     return { error: "Gerekli alanlar eksik!" }
   }
 
-  // Ürünü bul (fiyatı almak için)
-  const product = await prisma.product.findUnique({
-    where: { id: productId }
-  })
-
-  if (!product) {
-    return { error: "Ürün bulunamadı!" }
+  let items: InvoiceItemInput[] = []
+  try {
+    items = JSON.parse(itemsString)
+  } catch {
+    return { error: "Ürün listesi hatalı!" }
   }
 
-  const items: InvoiceItemInput[] = [{
-    productId: productId,
-    quantity: quantity,
-    price: Number(product.price),
-    vatRate: vatRate
-  }]
+  if (items.length === 0) {
+    return { error: "En az bir ürün eklemelisiniz." }
+  }
 
-  // Fatura Numarası Hesapla (Son numara + 1)
+  // Fatura Numarası Hesapla
   const lastInvoice = await prisma.invoice.findFirst({
     where: { tenantId: user.tenantId },
     orderBy: { number: 'desc' }
@@ -65,21 +58,19 @@ export async function createInvoice(formData: FormData) {
   const nextNumber = (lastInvoice?.number || 0) + 1
 
   try {
-    // TRANSACTION BAŞLATIYORUZ (Hepsi ya olur ya hiçbiri olmaz)
     await prisma.$transaction(async (tx) => {
       
       // A. Faturayı ve Kalemlerini Kaydet
       await tx.invoice.create({
         data: {
           number: nextNumber,
-          date: new Date(),
-          dueDate: dueDate ? new Date(dueDate) : new Date(),
+          date: new Date(date),
+          dueDate: new Date(date), // Vade tarihi şu an fatura tarihi ile aynı olsun
           tenantId: user.tenantId,
           customerId: customerId,
-          status: "PENDING", // Varsayılan: Bekliyor
+          status: "PENDING",
           items: {
-            // item tipini burada da belirttik
-            create: items.map((item: InvoiceItemInput) => ({
+            create: items.map((item) => ({
               productId: item.productId,
               quantity: item.quantity,
               price: item.price,
@@ -90,13 +81,12 @@ export async function createInvoice(formData: FormData) {
       })
 
       // B. STOK DÜŞME İŞLEMİ (📉)
-      // Her kalem için döngüye girip stoğu azaltıyoruz
       for (const item of items) {
         await tx.product.update({
           where: { id: item.productId },
           data: {
             stock: {
-              decrement: item.quantity // Satılan miktar kadar düş
+              decrement: item.quantity
             }
           }
         })
@@ -104,13 +94,14 @@ export async function createInvoice(formData: FormData) {
     })
 
     revalidatePath("/dashboard/invoices")
-    revalidatePath("/dashboard/products") // Stok değiştiği için ürünleri de yenile
-    return { success: true }
-
+    revalidatePath("/dashboard/products")
+    
   } catch (error) {
     console.error("Fatura oluşturma hatası:", error)
     return { error: "Fatura oluşturulurken hata oluştu." }
   }
+  
+  redirect("/dashboard/invoices")
 }
 
 // ---------------------------------------------------------
@@ -151,10 +142,8 @@ export async function deleteInvoice(id: string) {
   if (!user?.tenantId) return { error: "Şirket bulunamadı!", success: false }
 
   try {
-    // TRANSACTION BAŞLATIYORUZ
     await prisma.$transaction(async (tx) => {
       
-      // A. Silinecek faturayı ve kalemlerini bul
       const invoice = await tx.invoice.findUnique({
         where: { id: id },
         include: { items: true }
@@ -162,35 +151,127 @@ export async function deleteInvoice(id: string) {
 
       if (!invoice) throw new Error("Fatura bulunamadı")
 
-      // B. STOK İADE İŞLEMİ (📈)
+      // STOK İADE İŞLEMİ (📈)
       // Silinen faturadaki ürünleri stoğa geri ekle
       for (const item of invoice.items) {
         await tx.product.update({
           where: { id: item.productId },
           data: {
             stock: {
-              increment: item.quantity // Adet kadar geri ekle
+              increment: item.quantity
             }
           }
         })
       }
 
-      // C. Önce kalemleri sil
       await tx.invoiceItem.deleteMany({
         where: { invoiceId: id }
       })
 
-      // D. Sonra faturayı sil
       await tx.invoice.delete({
         where: { id: id }
       })
     })
 
     revalidatePath("/dashboard/invoices")
-    revalidatePath("/dashboard/products") // Stok geri geldiği için listeyi yenile
+    revalidatePath("/dashboard/products")
     return { success: true, message: "Fatura başarıyla silindi!" }
   } catch (error) {
     console.error("Silme hatası:", error)
     return { error: "Silme işlemi başarısız oldu!", success: false }
   }
+}
+
+// ---------------------------------------------------------
+// 4. FATURA GÜNCELLEME / DÜZENLEME (Stok Düzeltmeli) 🆕
+// ---------------------------------------------------------
+export async function updateInvoice(formData: FormData) {
+    const session = await auth();
+    if (!session?.user?.email) return { error: "Yetkisiz işlem." };
+    
+    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+    if (!user?.tenantId) return { error: "Şirket bulunamadı." };
+  
+    const invoiceId = formData.get("id") as string;
+    const customerId = formData.get("customerId") as string;
+    const date = formData.get("date") as string;
+    const itemsString = formData.get("items") as string; 
+  
+    if (!invoiceId || !customerId || !date || !itemsString) {
+      return { error: "Lütfen tüm alanları doldurun." };
+    }
+  
+    let items: InvoiceItemInput[] = [];
+    try {
+      items = JSON.parse(itemsString);
+    } catch {
+      return { error: "Fatura kalemleri hatalı." };
+    }
+  
+    try {
+      await prisma.$transaction(async (tx) => {
+        
+        // A. Fatura Başlığını Güncelle
+        await tx.invoice.update({
+          where: { 
+            id: invoiceId,
+            tenantId: user.tenantId
+          },
+          data: {
+            customerId,
+            date: new Date(date),
+            dueDate: new Date(date),
+          },
+        });
+  
+        // B. ESKİ STOKLARI İADE ET (Revert Stock) 📈
+        // Faturadaki eski ürünleri bulup stoklarını geri ekliyoruz
+        const oldInvoice = await tx.invoice.findUnique({
+            where: { id: invoiceId },
+            include: { items: true }
+        });
+
+        if (oldInvoice) {
+            for (const oldItem of oldInvoice.items) {
+                await tx.product.update({
+                    where: { id: oldItem.productId },
+                    data: { stock: { increment: oldItem.quantity } }
+                });
+            }
+        }
+
+        // C. Eski Kalemleri Sil
+        await tx.invoiceItem.deleteMany({
+          where: { invoiceId: invoiceId },
+        });
+  
+        // D. Yeni Kalemleri Ekle ve YENİ STOK DÜŞ (Apply New Stock) 📉
+        for (const item of items) {
+          await tx.invoiceItem.create({
+            data: {
+              invoiceId: invoiceId,
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.price, 
+              vatRate: item.vatRate,
+            },
+          });
+
+          // Yeni miktarı stoktan düş
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } }
+          });
+        }
+      });
+  
+      revalidatePath("/dashboard/invoices")
+      revalidatePath("/dashboard/products")
+      
+    } catch (error) {
+      console.error("Fatura güncelleme hatası:", error);
+      return { error: "Fatura güncellenemedi." };
+    }
+  
+    redirect("/dashboard/invoices");
 }

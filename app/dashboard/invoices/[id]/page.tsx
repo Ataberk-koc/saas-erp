@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import PrintButton from "./print-button";
 import StatusButtons from "./status-button";
-import DeleteButton from "./delete-button"; 
+import DeleteButton from "./delete-button";
 // 👇 PDF Butonunu ekliyoruz (Eğer dosyanın adı farklıysa düzelt)
-import DownloadButton from "./download-button"; 
+import DownloadButton from "./download-button";
 
 // Yazdırma Stili
 const printStyles = `
@@ -61,7 +61,7 @@ export default async function InvoiceDetailPage({
     // Fiyatları sayıya çevir
     items: invoice.items.map((item) => ({
       ...item,
-      price: Number(item.price), 
+      price: Number(item.price),
       product: {
         ...item.product,
         price: Number(item.product.price),
@@ -98,14 +98,22 @@ export default async function InvoiceDetailPage({
         <Link href="/dashboard/invoices">
           <Button variant="outline">← Listeye Dön</Button>
         </Link>
-        
+
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-            {/* 👇 Çevrilmiş (serialized) veriyi gönderiyoruz */}
-            <DownloadButton invoice={serializedInvoice} tenant={user?.tenant} />
-            
-            <StatusButtons id={invoice.id} currentStatus={invoice.status} />
-            <PrintButton />
-            <DeleteButton invoiceId={invoice.id} />
+          {/* 👇 Çevrilmiş (serialized) veriyi gönderiyoruz */}
+          <DownloadButton invoice={serializedInvoice} tenant={user?.tenant} />
+
+          <StatusButtons id={invoice.id} currentStatus={invoice.status} />
+          <PrintButton />
+          <DeleteButton invoiceId={invoice.id} />
+          <Link href={`/dashboard/invoices/${invoice.id}/edit`}>
+            <Button
+              variant="outline"
+              className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200"
+            >
+              ✏️ Düzenle
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -115,19 +123,18 @@ export default async function InvoiceDetailPage({
         className="bg-white w-full max-w-4xl p-6 md:p-12 shadow-xl rounded-lg text-slate-800 relative overflow-hidden"
         style={{ minHeight: "297mm" }}
       >
-        
         {/* Durum Damgası */}
         <div className="absolute top-10 right-10 opacity-20 transform rotate-12 pointer-events-none">
-            {invoice.status === 'PAID' && (
-                <span className="border-4 border-green-600 text-green-600 text-4xl md:text-6xl font-black px-4 py-2 rounded uppercase">
-                    ÖDENDİ
-                </span>
-            )}
-            {invoice.status === 'CANCELLED' && (
-                <span className="border-4 border-red-600 text-red-600 text-4xl md:text-6xl font-black px-4 py-2 rounded uppercase">
-                    İPTAL
-                </span>
-            )}
+          {invoice.status === "PAID" && (
+            <span className="border-4 border-green-600 text-green-600 text-4xl md:text-6xl font-black px-4 py-2 rounded uppercase">
+              ÖDENDİ
+            </span>
+          )}
+          {invoice.status === "CANCELLED" && (
+            <span className="border-4 border-red-600 text-red-600 text-4xl md:text-6xl font-black px-4 py-2 rounded uppercase">
+              İPTAL
+            </span>
+          )}
         </div>
 
         {/* 1. Başlık */}
@@ -137,13 +144,13 @@ export default async function InvoiceDetailPage({
               {user?.tenant?.name}
             </h1>
             <div className="text-sm text-slate-500 mt-2 space-y-1">
-                <p>Vergi Dairesi: {user?.tenant?.taxOffice || "-"}</p>
-                <p>Vergi No: {user?.tenant?.taxNumber || "-"}</p>
-                {user?.tenant?.phone && <p>Tel: {user?.tenant?.phone}</p>}
-                {user?.tenant?.email && <p>Email: {user?.tenant?.email}</p>}
-                <p className="max-w-xs pt-1 border-t mt-1">
-                  {user?.tenant?.address || "Adres bilgisi girilmemiş."}
-                </p>
+              <p>Vergi Dairesi: {user?.tenant?.taxOffice || "-"}</p>
+              <p>Vergi No: {user?.tenant?.taxNumber || "-"}</p>
+              {user?.tenant?.phone && <p>Tel: {user?.tenant?.phone}</p>}
+              {user?.tenant?.email && <p>Email: {user?.tenant?.email}</p>}
+              <p className="max-w-xs pt-1 border-t mt-1">
+                {user?.tenant?.address || "Adres bilgisi girilmemiş."}
+              </p>
             </div>
           </div>
           <div className="text-left md:text-right w-full md:w-auto">
@@ -167,32 +174,48 @@ export default async function InvoiceDetailPage({
 
         {/* 3. Tablo */}
         <div className="overflow-x-auto mb-10">
-            <table className="w-full">
+          <table className="w-full">
             <thead className="bg-slate-50 border-b border-t">
-                <tr>
-                <th className="text-left py-3 px-4 font-semibold text-sm whitespace-nowrap">Ürün / Hizmet</th>
-                <th className="text-center py-3 px-4 font-semibold text-sm whitespace-nowrap">KDV</th>
-                <th className="text-center py-3 px-4 font-semibold text-sm whitespace-nowrap">Miktar</th>
-                <th className="text-right py-3 px-4 font-semibold text-sm whitespace-nowrap">Birim Fiyat</th>
-                <th className="text-right py-3 px-4 font-semibold text-sm whitespace-nowrap">Toplam</th>
-                </tr>
+              <tr>
+                <th className="text-left py-3 px-4 font-semibold text-sm whitespace-nowrap">
+                  Ürün / Hizmet
+                </th>
+                <th className="text-center py-3 px-4 font-semibold text-sm whitespace-nowrap">
+                  KDV
+                </th>
+                <th className="text-center py-3 px-4 font-semibold text-sm whitespace-nowrap">
+                  Miktar
+                </th>
+                <th className="text-right py-3 px-4 font-semibold text-sm whitespace-nowrap">
+                  Birim Fiyat
+                </th>
+                <th className="text-right py-3 px-4 font-semibold text-sm whitespace-nowrap">
+                  Toplam
+                </th>
+              </tr>
             </thead>
             <tbody>
-                {invoice.items.map((item) => (
+              {invoice.items.map((item) => (
                 <tr key={item.id} className="border-b text-sm">
-                    <td className="py-4 px-4 font-medium whitespace-nowrap">{item.product.name}</td>
-                    <td className="py-4 px-4 text-center text-slate-500 whitespace-nowrap">%{item.vatRate}</td>
-                    <td className="py-4 px-4 text-center whitespace-nowrap">{item.quantity}</td>
-                    <td className="py-4 px-4 text-right whitespace-nowrap">
+                  <td className="py-4 px-4 font-medium whitespace-nowrap">
+                    {item.product.name}
+                  </td>
+                  <td className="py-4 px-4 text-center text-slate-500 whitespace-nowrap">
+                    %{item.vatRate}
+                  </td>
+                  <td className="py-4 px-4 text-center whitespace-nowrap">
+                    {item.quantity}
+                  </td>
+                  <td className="py-4 px-4 text-right whitespace-nowrap">
                     {formatCurrency(Number(item.price))}
-                    </td>
-                    <td className="py-4 px-4 text-right font-medium whitespace-nowrap">
+                  </td>
+                  <td className="py-4 px-4 text-right font-medium whitespace-nowrap">
                     {formatCurrency(Number(item.price) * item.quantity)}
-                    </td>
+                  </td>
                 </tr>
-                ))}
+              ))}
             </tbody>
-            </table>
+          </table>
         </div>
 
         {/* 4. Toplamlar */}
@@ -204,7 +227,9 @@ export default async function InvoiceDetailPage({
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-slate-500">Toplam KDV:</span>
-              <span className="font-medium">{formatCurrency(totalTaxAmount)}</span>
+              <span className="font-medium">
+                {formatCurrency(totalTaxAmount)}
+              </span>
             </div>
             <div className="flex justify-between border-t pt-2 mt-2">
               <span className="font-bold text-lg">Genel Toplam:</span>
@@ -217,23 +242,26 @@ export default async function InvoiceDetailPage({
 
         {/* 5. Alt Bilgi */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t mt-auto">
-            <div>
-                <h4 className="font-bold text-sm mb-2 text-slate-800">Banka Bilgileri</h4>
-                {user?.tenant?.iban ? (
-                    <div className="bg-slate-50 p-3 rounded border border-slate-100 inline-block w-full md:w-auto">
-                        <p className="text-xs text-slate-500 font-bold mb-1">IBAN:</p>
-                        <p className="text-sm font-mono text-slate-700 tracking-wide break-all">{user?.tenant?.iban}</p>
-                    </div>
-                ) : (
-                    <p className="text-xs text-slate-400">IBAN bilgisi girilmemiş.</p>
-                )}
-            </div>
-            <div className="text-center mt-4">
-                <div className="border-b w-32 mx-auto mb-2"></div>
-                <p className="text-xs text-slate-400">İmza / Kaşe</p>
-            </div>
+          <div>
+            <h4 className="font-bold text-sm mb-2 text-slate-800">
+              Banka Bilgileri
+            </h4>
+            {user?.tenant?.iban ? (
+              <div className="bg-slate-50 p-3 rounded border border-slate-100 inline-block w-full md:w-auto">
+                <p className="text-xs text-slate-500 font-bold mb-1">IBAN:</p>
+                <p className="text-sm font-mono text-slate-700 tracking-wide break-all">
+                  {user?.tenant?.iban}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400">IBAN bilgisi girilmemiş.</p>
+            )}
+          </div>
+          <div className="text-center mt-4">
+            <div className="border-b w-32 mx-auto mb-2"></div>
+            <p className="text-xs text-slate-400">İmza / Kaşe</p>
+          </div>
         </div>
-
       </div>
     </div>
   );
