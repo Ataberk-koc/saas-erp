@@ -8,7 +8,6 @@ import { createInvoice } from "@/app/actions/invoice"
 
 type Props = {
   customers: { id: string; name: string }[]
-  // 👇 DÜZELTME 1: "any" yerine "number" dedik
   products: { id: string; name: string; price: number; vatRate: number }[]
 }
 
@@ -27,21 +26,22 @@ export default function CreateInvoiceForm({ customers, products }: Props) {
     }
   }
 
-  // 👇 DÜZELTME 2: TypeScript hatasını çözen ara fonksiyon (Wrapper)
   async function handleAction(formData: FormData) {
     setIsLoading(true)
     setMessage(null)
     
-    const result = await createInvoice(formData)
+    // 👇 DÜZELTME: 'any' yerine beklediğimiz tipi belirttik
+    // Bu sayede hem TypeScript hem de ESLint mutlu olur.
+    const result = await createInvoice(formData) as { error?: string }
     
-    if (result.success) {
-      setMessage({ type: 'success', text: '✅ Fatura başarıyla oluşturuldu!' })
-      // Formu sıfırla
+    // Hata yoksa başarılı sayıyoruz
+    if (!result?.error) {
+      setMessage({ type: 'success', text: '✅ Fatura başarıyla oluşturuldu! Yönlendiriliyorsunuz...' })
+      
       const form = document.querySelector('form') as HTMLFormElement
       if (form) form.reset()
       setSelectedVat(20)
       
-      // 3 saniye sonra mesajı kapat
       setTimeout(() => setMessage(null), 3000)
     } else {
       setMessage({ type: 'error', text: `❌ ${result.error || 'Bir hata oluştu'}` })
@@ -51,7 +51,6 @@ export default function CreateInvoiceForm({ customers, products }: Props) {
   }
 
   return (
-    // action kısmına createInvoice yerine handleAction yazdık
     <>
       {message && (
         <div className={`p-4 rounded-md mb-4 ${
