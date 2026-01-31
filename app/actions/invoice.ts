@@ -22,10 +22,6 @@ export async function createInvoice(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
 
-    if (session.user.role !== "ADMIN") {
-    return { error: "Fatura silme yetkiniz yok! Sadece Admin silebilir." }
-  }
-  
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
 
@@ -141,6 +137,11 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
 export async function deleteInvoice(id: string) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!", success: false }
+
+  // 👇 GÜVENLİK KONTROLÜ EKLENDİ (Sadece Admin Silebilir)
+  if (session.user.role !== "ADMIN") {
+    return { error: "Silme yetkiniz yok! Sadece Yönetici silebilir.", success: false }
+  }
   
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!", success: false }
