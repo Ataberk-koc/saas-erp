@@ -12,6 +12,10 @@ export async function addCustomer(formData: FormData) {
     return { error: "Yetkisiz işlem!" }
   }
 
+  if (session.user.role !== "ADMIN") {
+    return { error: "Müşteri silme yetkiniz yok!" }
+  }
+
   // 2. Kullanıcının Tenant ID'sini bul (Güvenlik)
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },

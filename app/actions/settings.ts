@@ -8,6 +8,10 @@ export async function updateCompanyInfo(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
 
+  if (session.user.role !== "ADMIN") {
+    return { error: "Ayarları değiştirme yetkiniz yok! Sadece Yönetici değiştirebilir." }
+  }
+
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
 

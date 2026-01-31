@@ -78,6 +78,10 @@ export async function updateProduct(id: string, formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
 
+  if (session.user.role !== "ADMIN") {
+    return { error: "Ürün silme yetkiniz yok!" }
+  }
+
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
 
   const name = formData.get("name") as string
