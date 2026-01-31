@@ -26,8 +26,20 @@ export default async function ExpensesPage() {
     await addExpense(formData)
   }
 
+  // Kategori Etiketlerini Türkçeleştirmek için Helper
+  const getCategoryLabel = (cat: string) => {
+    switch(cat) {
+      case 'RENT': return '🏠 Kira';
+      case 'FOOD': return '🍔 Yemek';
+      case 'TRANSPORT': return '🚗 Ulaşım';
+      case 'MARKETING': return '📢 Pazarlama';
+      default: return '🔹 Diğer';
+    }
+  }
+
   return (
-    <div className="p-10 bg-slate-50 min-h-screen space-y-8">
+    // Mobilde p-4, masaüstünde p-10
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
       <div className="flex justify-between items-center">
          <h1 className="text-3xl font-bold text-slate-800">💸 Gider Yönetimi</h1>
@@ -46,10 +58,28 @@ export default async function ExpensesPage() {
                 <label className="text-sm font-medium">Açıklama</label>
                 <Input name="description" placeholder="Örn: Ofis Kirası, Elektrik..." required />
               </div>
+
+              {/* 👇 KATEGORİ SEÇİMİ */}
+              <div className="grid gap-2">
+                 <label className="text-sm font-medium">Kategori</label>
+                 <select name="category" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+                    <option value="OTHER">Diğer</option>
+                    <option value="RENT">Kira</option>
+                    <option value="FOOD">Yemek</option>
+                    <option value="TRANSPORT">Ulaşım</option>
+                    <option value="MARKETING">Pazarlama</option>
+                 </select>
+              </div>
               
               <div className="grid gap-2">
                 <label className="text-sm font-medium">Tutar (TL)</label>
                 <Input name="amount" placeholder="1500,50" required />
+              </div>
+
+              {/* 👇 TARİH SEÇİMİ */}
+              <div className="grid gap-2">
+                 <label className="text-sm font-medium">Tarih</label>
+                 <Input name="date" type="date" required defaultValue={new Date().toISOString().split('T')[0]} />
               </div>
 
               <Button type="submit" className="w-full bg-red-600 hover:bg-red-700">
@@ -65,41 +95,55 @@ export default async function ExpensesPage() {
             <CardTitle>Son Harcamalar</CardTitle>
           </CardHeader>
           <CardContent>
-            <table className="w-full text-sm text-left">
-              <thead className="bg-slate-100 border-b text-slate-500">
-                <tr>
-                  <th className="p-3">Açıklama</th>
-                  <th className="p-3">Tarih</th>
-                  <th className="p-3 text-right">Tutar</th>
-                  <th className="p-3"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.length === 0 ? (
-                    <tr><td colSpan={4} className="p-4 text-center text-slate-500">Henüz gider kaydı yok.</td></tr>
-                ) : (
-                    expenses.map(expense => (
-                        <tr key={expense.id} className="border-b hover:bg-slate-50">
-                            <td className="p-3 font-medium">{expense.description}</td>
-                            <td className="p-3 text-slate-500">
-                                {new Date(expense.date).toLocaleDateString("tr-TR")}
-                            </td>
-                            <td className="p-3 text-right font-bold text-red-600">
-                                -{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(expense.amount))}
-                            </td>
-                            <td className="p-3 text-right">
-                                <form action={async () => {
-                                    "use server"
-                                    await deleteExpense(expense.id)
-                                }}>
-                                    <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-600">Sil</Button>
-                                </form>
-                            </td>
-                        </tr>
-                    ))
-                )}
-              </tbody>
-            </table>
+            {/* Mobilde tablo taşmasın diye overflow-x-auto */}
+            <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                <thead className="bg-slate-100 border-b text-slate-500">
+                    <tr>
+                    <th className="p-3 whitespace-nowrap">Açıklama</th>
+                    <th className="p-3 whitespace-nowrap">Kategori</th>
+                    <th className="p-3 whitespace-nowrap">Tarih</th>
+                    <th className="p-3 text-right whitespace-nowrap">Tutar</th>
+                    <th className="p-3"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {expenses.length === 0 ? (
+                        <tr><td colSpan={5} className="p-4 text-center text-slate-500">Henüz gider kaydı yok.</td></tr>
+                    ) : (
+                        expenses.map(expense => (
+                            <tr key={expense.id} className="border-b hover:bg-slate-50">
+                                <td className="p-3 font-medium text-slate-700 whitespace-nowrap">{expense.description}</td>
+                                
+                                {/* 👇 Kategori Gösterimi */}
+                                <td className="p-3 whitespace-nowrap">
+                                    <span className="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                        {getCategoryLabel(expense.category)}
+                                    </span>
+                                </td>
+
+                                <td className="p-3 text-slate-500 whitespace-nowrap">
+                                    {new Date(expense.date).toLocaleDateString("tr-TR")}
+                                </td>
+                                <td className="p-3 text-right font-bold text-red-600 whitespace-nowrap">
+                                    -{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(expense.amount))}
+                                </td>
+                                <td className="p-3 text-right whitespace-nowrap">
+                                    <form action={async () => {
+                                        "use server"
+                                        await deleteExpense(expense.id)
+                                    }}>
+                                        <Button variant="ghost" size="sm" className="text-slate-400 hover:text-red-600 h-8 w-8 p-0">
+                                            🗑️
+                                        </Button>
+                                    </form>
+                                </td>
+                            </tr>
+                        ))
+                    )}
+                </tbody>
+                </table>
+            </div>
           </CardContent>
         </Card>
 

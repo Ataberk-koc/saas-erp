@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { ExpenseCategory } from "@prisma/client" // 👈 Enum'ı import ettik
 
 export async function addExpense(formData: FormData) {
   const session = await auth()
@@ -13,7 +14,12 @@ export async function addExpense(formData: FormData) {
 
   const description = formData.get("description") as string
   
-  // Fiyatı Temizle (Türkçe formatı düzeltme)
+  // 👇 Yeni Alanlar
+  const category = formData.get("category") as ExpenseCategory || "OTHER"
+  const dateStr = formData.get("date") as string
+  const date = dateStr ? new Date(dateStr) : new Date()
+
+  // Fiyatı Temizle (Mevcut mantığın korundu)
   let amountString = formData.get("amount") as string
   if (amountString.includes(".") && amountString.includes(",")) {
      amountString = amountString.replace(/\./g, "")
@@ -28,14 +34,18 @@ export async function addExpense(formData: FormData) {
       data: {
         description,
         amount,
+        category, // 👈 Veritabanına kategori eklendi
+        date: date,     // 👈 Veritabanına tarih eklendi
         tenantId: user.tenantId
       }
     })
 
-    revalidatePath("/dashboard/expenses")
-    revalidatePath("/dashboard") // Dashboard'daki kar hesabını etkiler
+    // Dosya yoluna göre path'i güncelledim (expenses -> expense)
+    revalidatePath("/dashboard/expense")
+    revalidatePath("/dashboard") 
     return { success: true }
-  } catch {
+  } catch (error) {
+    console.log(error)
     return { error: "Gider eklenirken hata oluştu." }
   }
 }
@@ -50,7 +60,9 @@ export async function deleteExpense(id: string) {
     await prisma.expense.delete({
       where: { id: id, tenantId: user?.tenantId }
     })
-    revalidatePath("/dashboard/expenses")
+    
+    // Dosya yoluna göre path'i güncelledim
+    revalidatePath("/dashboard/expense")
     revalidatePath("/dashboard")
     return { success: true }
   } catch {

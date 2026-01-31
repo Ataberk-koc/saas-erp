@@ -43,8 +43,7 @@ model User {
   email    String @unique
   password String
   name     String?
-  role     String @default("USER")
-
+  role          Role      @default(ADMIN)
   tenantId String
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 }
@@ -143,7 +142,7 @@ model Expense {
   description String   // Harcama açıklaması (Örn: Ofis Kirası)
   amount      Decimal  // Tutar
   date        DateTime @default(now()) // Harcama tarihi
-
+  category    ExpenseCategory @default(OTHER)
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
@@ -158,4 +157,18 @@ model PasswordResetToken {
   expires DateTime
 
   @@unique([email, token])
+}
+
+enum Role {
+  ADMIN
+  ACCOUNTANT // Muhasebeci
+  USER
+}
+
+enum ExpenseCategory {
+  RENT       // Kira
+  FOOD       // Yemek
+  TRANSPORT  // Ulaşım
+  MARKETING  // Pazarlama
+  OTHER      // Diğer
 }

@@ -8,6 +8,7 @@ import StatusButtons from "./status-button";
 import DeleteButton from "./delete-button";
 // 👇 PDF Butonunu ekliyoruz (Eğer dosyanın adı farklıysa düzelt)
 import DownloadButton from "./download-button";
+import SendMailButton from "./send-mail-button"
 
 // Yazdırma Stili
 const printStyles = `
@@ -102,7 +103,7 @@ export default async function InvoiceDetailPage({
         <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
           {/* 👇 Çevrilmiş (serialized) veriyi gönderiyoruz */}
           <DownloadButton invoice={serializedInvoice} tenant={user?.tenant} />
-
+          <SendMailButton invoiceId={invoice.id} />
           <StatusButtons id={invoice.id} currentStatus={invoice.status} />
           <PrintButton />
           <DeleteButton invoiceId={invoice.id} />

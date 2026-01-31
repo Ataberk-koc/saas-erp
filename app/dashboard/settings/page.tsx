@@ -10,6 +10,8 @@ export default async function SettingsPage() {
   const session = await auth()
   if (!session?.user?.email) redirect("/login")
 
+    
+
   const user = await prisma.user.findUnique({
     where: { email: session.user.email },
     include: { tenant: true }
@@ -20,6 +22,10 @@ export default async function SettingsPage() {
   async function handleSave(formData: FormData) {
     "use server"
     await updateCompanyInfo(formData)
+  }
+
+  if (session.user.role !== "ADMIN") {
+    return <div className="p-10 text-red-500">Bu sayfaya erişim yetkiniz yok!</div>
   }
 
   return (
