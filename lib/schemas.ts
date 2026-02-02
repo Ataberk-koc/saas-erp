@@ -44,3 +44,17 @@ export const companySchema = z.object({
   taxNumber: z.string().optional(),
   iban: z.string().optional(),
 });
+
+export const updateProfileSchema = z.object({
+  name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
+});
+
+// 6. ŞİFRE DEĞİŞTİRME
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Mevcut şifrenizi girmelisiniz."),
+  newPassword: z.string().min(6, "Yeni şifre en az 6 karakter olmalı."),
+  confirmPassword: z.string().min(6, "Şifre tekrarı en az 6 karakter olmalı."),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Yeni şifreler uyuşmuyor.",
+  path: ["confirmPassword"],
+});

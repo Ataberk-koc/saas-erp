@@ -6,6 +6,7 @@ import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+
 interface SidebarProps {
   user?: {
     name?: string | null;
@@ -87,6 +88,12 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             href="/dashboard/ai"
             icon="🤖"
             label="AI Analiz"
+            onClick={() => setIsOpen(false)}
+          />
+          <SidebarLink
+            href="/dashboard/profile"
+            icon="👤 "
+            label="Profil"
             onClick={() => setIsOpen(false)}
           />
           
