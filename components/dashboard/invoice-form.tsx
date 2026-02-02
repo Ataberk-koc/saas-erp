@@ -4,11 +4,20 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createInvoice, updateInvoice } from "@/app/actions/invoice";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Minus } from "lucide-react"; // Minus ikonu eklendi
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { toast } from "sonner"; // Toast bildirimi için
 
-// 👇 TİP TANIMLAMALARI (Artık 'any' yok)
+// 👇 DÜZELTME 1: Tipleri 'number | string' yaptık.
+// Bu sayede inputun içi tamamen silindiğinde "0" yazmak zorunda kalmaz, boş kalabilir.
+interface InvoiceItem {
+  productId: string;
+  quantity: number | string; 
+  price: number | string;
+  vatRate: number;
+}
+
 interface Customer {
   id: string;
   name: string | null;
@@ -17,13 +26,6 @@ interface Customer {
 interface Product {
   id: string;
   name: string;
-  price: number; // Decimal'den number'a çevrilmiş gelmeli
-  vatRate: number;
-}
-
-interface InvoiceItem {
-  productId: string;
-  quantity: number;
   price: number;
   vatRate: number;
 }
@@ -32,19 +34,23 @@ interface InitialData {
   id: string;
   customerId: string;
   date: Date | string;
-  items: InvoiceItem[];
+  items: {
+    productId: string;
+    quantity: number;
+    price: number;
+    vatRate: number;
+  }[];
 }
 
 interface InvoiceFormProps {
   customers: Customer[];
   products: Product[];
-  initialData?: InitialData; // Opsiyonel (Sadece düzenlemede gelir)
+  initialData?: InitialData;
 }
 
 export function InvoiceForm({ customers, products, initialData }: InvoiceFormProps) {
   const [loading, setLoading] = useState(false);
   
-  // State tipini belirttik: InvoiceItem[]
   const [rows, setRows] = useState<InvoiceItem[]>(
     initialData?.items?.map((item) => ({
       productId: item.productId,
@@ -65,17 +71,18 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
     }
   };
 
-  // value tipi: string veya number olabilir
   const updateRow = (index: number, field: keyof InvoiceItem, value: string | number) => {
     const newRows = [...rows];
-
+    
+    // 👇 DÜZELTME 2: Boş string gelirse (silme işlemi) state'e boş string olarak atıyoruz.
+    // Böylece input "0"a dönüşüp kullanıcıyı çıldırtmıyor.
     newRows[index] = { ...newRows[index], [field]: value };
 
-    // Eğer ürün seçildiyse fiyat ve KDV'yi getir
+    // Ürün seçildiğinde fiyatı ve KDV'yi otomatik getir
     if (field === "productId") {
       const product = products.find((p) => p.id === value);
       if (product) {
-        newRows[index].price = Number(product.price);
+        newRows[index].price = product.price;
         newRows[index].vatRate = product.vatRate;
       }
     }
@@ -83,9 +90,20 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
     setRows(newRows);
   };
 
+  // 👇 YENİ: Miktar Arttırma/Azaltma Fonksiyonları
+  const handleQuantityStep = (index: number, increment: number) => {
+    const currentQty = Number(rows[index].quantity) || 0;
+    const newQty = Math.max(1, currentQty + increment); // 1'in altına düşmesin
+    updateRow(index, "quantity", newQty);
+  };
+
   const calculateTotal = () => {
     return rows.reduce((acc, row) => {
-      const total = row.price * row.quantity;
+      // Hesaplama yaparken boş stringleri 0 kabul et
+      const qty = Number(row.quantity) || 0;
+      const prc = Number(row.price) || 0;
+      
+      const total = prc * qty;
       const vat = total * (row.vatRate / 100);
       return acc + total + vat;
     }, 0);
@@ -95,16 +113,34 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
     event.preventDefault();
     setLoading(true);
 
-    const formData = new FormData(event.currentTarget);
-    formData.append("items", JSON.stringify(rows));
+    // Göndermeden önce tüm değerlerin sayı olduğundan emin ol (Boşlukları temizle)
+    const sanitizedRows = rows.map(r => ({
+      ...r,
+      quantity: Number(r.quantity) || 1, // Boşsa 1 yap
+      price: Number(r.price) || 0        // Boşsa 0 yap
+    }));
 
+    const formData = new FormData(event.currentTarget);
+    formData.set("items", JSON.stringify(sanitizedRows)); // Düzeltilmiş veriyi koy
+
+    let result;
     if (initialData) {
-      // DÜZENLEME MODU
       formData.append("id", initialData.id);
-      await updateInvoice(formData);
+      result = await updateInvoice(formData) as { error?: string };
     } else {
-      // EKLEME MODU
-      await createInvoice(formData);
+      result = await createInvoice(formData) as { error?: string };
+    }
+
+    if (!result?.error) {
+       toast.success(initialData ? 'Fatura güncellendi!' : 'Fatura oluşturuldu! Yönlendiriliyorsunuz...');
+       // Sayfayı resetle veya yönlendir (Action zaten redirect yapıyor ama UX için)
+       if(!initialData) {
+          const form = document.querySelector('form') as HTMLFormElement;
+          if(form) form.reset();
+          setRows([{ productId: "", quantity: 1, price: 0, vatRate: 18 }]);
+       }
+    } else {
+       toast.error(result.error);
     }
 
     setLoading(false);
@@ -162,6 +198,7 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
                 key={index}
                 className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end border p-4 rounded-lg bg-slate-50"
               >
+                {/* 1. Ürün Seçimi (4 Kolon) */}
                 <div className="md:col-span-4 space-y-2">
                   <Label className="text-xs">Ürün / Hizmet</Label>
                   <select
@@ -169,7 +206,7 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
                     onChange={(e) =>
                       updateRow(index, "productId", e.target.value)
                     }
-                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
                     required
                   >
                     <option value="">Seçiniz...</option>
@@ -181,65 +218,75 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
                   </select>
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-xs">Miktar</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={row.quantity}
-                    onChange={(e) =>
-                      updateRow(index, "quantity", Number(e.target.value))
-                    }
-                    className="h-9"
-                    required
-                  />
+                {/* 2. Miktar Alanı (Mobilde Butonlu) (3 Kolon) */}
+                <div className="md:col-span-3 space-y-2">
+                  <Label className="text-xs">Adet</Label>
+                  <div className="flex items-center">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-10 w-10 rounded-r-none border-r-0"
+                      onClick={() => handleQuantityStep(index, -1)}
+                    >
+                      <Minus className="w-3 h-3" />
+                    </Button>
+                    <Input
+                      type="number"
+                      min="1"
+                      value={row.quantity}
+                      onChange={(e) => updateRow(index, "quantity", e.target.value)}
+                      className="h-10 text-center rounded-none z-10 focus-visible:ring-1"
+                      required
+                    />
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-10 w-10 rounded-l-none border-l-0"
+                      onClick={() => handleQuantityStep(index, 1)}
+                    >
+                      <Plus className="w-3 h-3" />
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-xs">Birim Fiyat</Label>
+                {/* 3. Birim Fiyat (3 Kolon) */}
+                <div className="md:col-span-3 space-y-2">
+                  <Label className="text-xs">Birim Fiyat (₺)</Label>
                   <Input
                     type="number"
                     step="0.01"
+                    // Boşsa boş kalsın, sıfırsa 0 yazsın
                     value={row.price}
-                    onChange={(e) =>
-                      updateRow(index, "price", Number(e.target.value))
-                    }
-                    className="h-9"
+                    onChange={(e) => updateRow(index, "price", e.target.value)}
+                    className="h-10"
                     required
                   />
                 </div>
 
-                <div className="md:col-span-2 space-y-2">
-                  <Label className="text-xs">KDV (%)</Label>
-                  <Input
-                    type="number"
-                    value={row.vatRate}
-                    readOnly
-                    className="h-9 bg-slate-100"
-                  />
-                </div>
-
-                <div className="md:col-span-2 flex items-center justify-between md:justify-end gap-2">
-                  <div className="font-bold text-sm">
-                    {(
-                      row.price * row.quantity +
-                      row.price * row.quantity * (row.vatRate / 100)
-                    ).toLocaleString("tr-TR", {
-                      style: "currency",
-                      currency: "TRY",
-                    })}
-                  </div>
-                  {rows.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                      onClick={() => removeRow(index)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
+                {/* 4. KDV & Silme (2 Kolon) */}
+                <div className="md:col-span-2 flex items-center justify-between gap-2">
+                    <div className="space-y-2 w-full">
+                        <Label className="text-xs">KDV</Label>
+                        <div className="flex items-center h-10 px-3 border rounded-md bg-slate-100 text-sm text-slate-600">
+                             %{row.vatRate}
+                        </div>
+                    </div>
+                  
+                    {rows.length > 1 && (
+                        <div className="pb-0.5"> {/* Hizalama ayarı */}
+                            <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 h-10 w-10 mt-6"
+                            onClick={() => removeRow(index)}
+                            >
+                            <Trash2 className="w-5 h-5" />
+                            </Button>
+                        </div>
+                    )}
                 </div>
               </div>
             ))}
@@ -247,7 +294,7 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
 
           <div className="flex justify-end pt-4 border-t">
             <div className="text-right">
-              <span className="text-slate-500 text-sm">Genel Toplam</span>
+              <span className="text-slate-500 text-sm">Genel Toplam (KDV Dahil)</span>
               <div className="text-2xl font-bold text-blue-600">
                 {calculateTotal().toLocaleString("tr-TR", {
                   style: "currency",
@@ -263,9 +310,9 @@ export function InvoiceForm({ customers, products, initialData }: InvoiceFormPro
         <Button type="button" variant="ghost" onClick={() => window.history.back()}>
           İptal
         </Button>
-        <Button type="submit" disabled={loading} className="min-w-37.5">
+        <Button type="submit" disabled={loading} className="min-w-32 bg-blue-600 hover:bg-blue-700">
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          {initialData ? "Değişiklikleri Kaydet" : "Faturayı Oluştur"}
+          {initialData ? "Kaydet" : "Oluştur"}
         </Button>
       </div>
     </form>

@@ -1,12 +1,12 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
-import { addCustomer, deleteCustomer } from "@/app/actions/customer"
+import { deleteCustomer } from "@/app/actions/customer"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Search from "@/components/search"
+import { CustomerForm } from "@/components/dashboard/customer-form" // 👈 Yeni bileşen
 
 export default async function CustomersPage({
   searchParams,
@@ -36,58 +36,22 @@ export default async function CustomersPage({
     orderBy: { createdAt: "desc" },
   })
 
-  async function handleSave(formData: FormData) {
-    "use server"
-    await addCustomer(formData)
-  }
-
   return (
-    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
     <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
-      {/* --- Ekleme Formu --- */}
+      {/* --- Ekleme Formu (Client Component) --- */}
       <Card>
         <CardHeader>
           <CardTitle>➕ Yeni Cari Hesap Ekle</CardTitle>
         </CardHeader>
         <CardContent>
-          <form action={handleSave} className="flex flex-col md:flex-row gap-4 items-end">
-            
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Firma/Kişi Adı</label>
-              <Input name="name" placeholder="Örn: Ahmet Yılmaz A.Ş." required />
-            </div>
-            
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Email</label>
-              <Input name="email" placeholder="ahmet@mail.com" />
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Telefon</label>
-              <Input name="phone" placeholder="0555..." />
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Türü</label>
-              <select 
-                name="type" 
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-              >
-                <option value="BUYER">Müşteri (Alıcı)</option>
-                <option value="SUPPLIER">Tedarikçi (Satıcı)</option>
-              </select>
-            </div>
-
-            {/* Mobilde buton tam genişlik olsun */}
-            <Button type="submit" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">Kaydet</Button>
-          </form>
+          {/* 👇 Artık burada yeni güvenli formumuz var */}
+          <CustomerForm />
         </CardContent>
       </Card>
 
       {/* --- Liste Tablosu --- */}
       <Card>
-        {/* DÜZELTME 2: Başlık ve Arama mobilde alt alta, desktopta yan yana */}
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <CardTitle>📋 Müşteri Listesi ({customers.length})</CardTitle>
           <div className="w-full md:w-72">
@@ -95,7 +59,6 @@ export default async function CustomersPage({
           </div>
         </CardHeader>
         <CardContent>
-          {/* DÜZELTME 3: Tabloya scroll özelliği (overflow-x-auto) */}
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-100 border-b text-slate-500">
