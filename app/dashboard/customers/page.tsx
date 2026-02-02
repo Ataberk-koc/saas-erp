@@ -6,12 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Search from "@/components/search"
-import { CustomerForm } from "@/components/dashboard/customer-form" // 👈 Yeni bileşen
+import { CustomerForm } from "@/components/dashboard/customer-form"
+import Pagination from "@/components/pagination" 
+
+const ITEMS_PER_PAGE = 10
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }>
+  searchParams?: Promise<{ q?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user?.email) redirect("/login")
@@ -20,32 +23,43 @@ export default async function CustomersPage({
     where: { email: session.user.email },
   })
 
-  // Arama kelimesini al
+  // 1. Parametreleri al
   const params = await searchParams
   const query = params?.q || ""
+  const currentPage = Number(params?.page) || 1
 
-  // Müşterileri Çek
+  // 2. Filtreleme Koşulları
+  const whereCondition = {
+    tenantId: user?.tenantId,
+    OR: [
+      { name: { contains: query, mode: "insensitive" as const } },
+      { email: { contains: query, mode: "insensitive" as const } },
+    ]
+  }
+
+  // 3. Toplam Sayıyı Bul
+  const totalItems = await prisma.customer.count({
+    where: whereCondition
+  })
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
+
+  // 4. Verileri Çek (Sayfalı)
   const customers = await prisma.customer.findMany({
-    where: {
-      tenantId: user?.tenantId,
-      OR: [
-        { name: { contains: query, mode: "insensitive" } },
-        { email: { contains: query, mode: "insensitive" } },
-      ]
-    },
+    where: whereCondition,
     orderBy: { createdAt: "desc" },
+    skip: (currentPage - 1) * ITEMS_PER_PAGE,
+    take: ITEMS_PER_PAGE,
   })
 
   return (
     <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
-      {/* --- Ekleme Formu (Client Component) --- */}
+      {/* --- Ekleme Formu --- */}
       <Card>
         <CardHeader>
           <CardTitle>➕ Yeni Cari Hesap Ekle</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* 👇 Artık burada yeni güvenli formumuz var */}
           <CustomerForm />
         </CardContent>
       </Card>
@@ -53,7 +67,7 @@ export default async function CustomersPage({
       {/* --- Liste Tablosu --- */}
       <Card>
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <CardTitle>📋 Müşteri Listesi ({customers.length})</CardTitle>
+          <CardTitle>📋 Müşteri Listesi ({totalItems})</CardTitle>
           <div className="w-full md:w-72">
              <Search placeholder="İsim veya Email ara..." />
           </div>
@@ -80,11 +94,9 @@ export default async function CustomersPage({
                 ) : (
                   customers.map((customer) => (
                     <tr key={customer.id} className="border-b hover:bg-slate-50 transition-colors">
-                      
                       <td className="p-4 font-medium text-slate-700 whitespace-nowrap">
                         {customer.name}
                       </td>
-
                       <td className="p-4 whitespace-nowrap">
                         <div className="flex flex-col">
                           <span>{customer.email || "-"}</span>
@@ -103,7 +115,6 @@ export default async function CustomersPage({
                       <td className="p-4 text-slate-500 whitespace-nowrap">
                         {new Date(customer.createdAt).toLocaleDateString("tr-TR")}
                       </td>
-                      
                       <td className="p-4 text-right whitespace-nowrap">
                         <div className="flex justify-end items-center gap-2">
                             <Link href={`/dashboard/customers/${customer.id}`}>
@@ -118,16 +129,20 @@ export default async function CustomersPage({
                             </form>
                         </div>
                       </td>
-
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
+
+          {/* 👇 SAYFALAMA BİLEŞENİ BURAYA EKLENDİ */}
+          <div className="mt-4">
+            <Pagination totalPages={totalPages} />
+          </div>
+
         </CardContent>
       </Card>
-
     </div>
   )
 }

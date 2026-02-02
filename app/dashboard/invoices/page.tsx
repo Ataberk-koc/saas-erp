@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import Search from "@/components/search"
+import Pagination from "@/components/pagination" // 👈 YENİ BİLEŞEN
+
+const ITEMS_PER_PAGE = 10 // Her sayfada kaç fatura görünsün?
 
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }>
+  searchParams?: Promise<{ q?: string; page?: string }>
 }) {
   const session = await auth()
   if (!session?.user?.email) redirect("/login")
@@ -18,26 +21,38 @@ export default async function InvoicesPage({
     where: { email: session.user.email },
   })
 
-  // 1. Arama kelimesini al
+  // 1. Parametreleri al
   const params = await searchParams
   const query = params?.q || ""
+  const currentPage = Number(params?.page) || 1
 
-  // 2. Faturaları Çek (Filtreleyerek)
-  const invoices = await prisma.invoice.findMany({
-    where: {
-      tenantId: user?.tenantId,
-      customer: {
-        name: {
-          contains: query,
-          mode: 'insensitive'
-        }
+  // 2. Filtreleme Koşulları
+  const whereCondition = {
+    tenantId: user?.tenantId,
+    customer: {
+      name: {
+        contains: query,
+        mode: 'insensitive' as const
       }
-    },
+    }
+  }
+
+  // 3. Toplam Sayıyı Bul (Sayfalama hesabı için)
+  const totalItems = await prisma.invoice.count({
+    where: whereCondition
+  })
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE)
+
+  // 4. Verileri Çek (Sadece o sayfanın verisi)
+  const invoices = await prisma.invoice.findMany({
+    where: whereCondition,
     include: {
       customer: true,
       items: true,
     },
-    orderBy: { date: 'desc' }
+    orderBy: { date: 'desc' },
+    skip: (currentPage - 1) * ITEMS_PER_PAGE, // Kaç tane atlayayım?
+    take: ITEMS_PER_PAGE, // Kaç tane alayım?
   })
 
   const formatCurrency = (amount: number) => {
@@ -48,14 +63,11 @@ export default async function InvoicesPage({
   }
 
   return (
-    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
     <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
-      {/* DÜZELTME 2: Başlık ve Buton mobilde alt alta */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h1 className="text-3xl font-bold text-slate-800">📄 Faturalar</h1>
         <Link href="/dashboard/invoices/create" className="w-full md:w-auto">
-            {/* Buton mobilde tam genişlik */}
             <Button className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
                 + Yeni Fatura Kes
             </Button>
@@ -63,15 +75,13 @@ export default async function InvoicesPage({
       </div>
 
       <Card>
-        {/* DÜZELTME 3: Başlık ve Arama mobilde alt alta */}
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <CardTitle>Kesilen Faturalar ({invoices.length})</CardTitle>
+          <CardTitle>Kesilen Faturalar ({totalItems})</CardTitle>
           <div className="w-full md:w-72">
              <Search placeholder="Müşteri adı ara..." />
           </div>
         </CardHeader>
         <CardContent>
-          {/* DÜZELTME 4: Tabloya scroll özelliği */}
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-100 border-b text-slate-500">
@@ -88,7 +98,7 @@ export default async function InvoicesPage({
                 {invoices.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="p-4 text-center text-slate-500">
-                      {query ? `"${query}" adlı müşteriye ait fatura bulunamadı.` : "Henüz fatura kesilmemiş."}
+                      {query ? `"${query}" ile eşleşen kayıt bulunamadı.` : "Henüz fatura kesilmemiş."}
                     </td>
                   </tr>
                 ) : (
@@ -130,6 +140,12 @@ export default async function InvoicesPage({
               </tbody>
             </table>
           </div>
+
+          {/* 👇 SAYFALAMA BİLEŞENİ BURAYA EKLENDİ */}
+          <div className="mt-4">
+            <Pagination totalPages={totalPages} />
+          </div>
+
         </CardContent>
       </Card>
     </div>
