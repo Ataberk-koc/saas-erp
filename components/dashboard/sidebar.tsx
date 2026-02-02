@@ -96,6 +96,12 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             label="Profil"
             onClick={() => setIsOpen(false)}
           />
+          <SidebarLink
+            href="/dashboard/reports"
+            icon="📈"
+            label="Raporlar"
+            onClick={() => setIsOpen(false)}
+          />
           
           {/* ✅ SADECE ADMIN GÖRSÜN */}
           {user?.role === "ADMIN" && (
