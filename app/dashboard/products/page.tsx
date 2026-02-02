@@ -1,17 +1,21 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { addProduct, deleteProduct } from "@/app/actions/product";
+import { addProduct } from "@/app/actions/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Search from "@/components/search";
+import Pagination from "@/components/pagination"; // 👈 YENİ: Sayfalama Bileşeni
+import { DeleteProductButton } from "@/components/dashboard/delete-product-button";
+
+const ITEMS_PER_PAGE = 10; // Her sayfada 10 ürün
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.email) redirect("/login");
@@ -20,20 +24,32 @@ export default async function ProductsPage({
     where: { email: session.user.email },
   });
 
-  // 1. Arama kelimesini yakala
+  // 1. Parametreleri al
   const params = await searchParams;
   const query = params?.q || "";
+  const currentPage = Number(params?.page) || 1;
 
-  // 2. Ürünleri Çek
-  const products = await prisma.product.findMany({
-    where: { 
-      tenantId: user?.tenantId,
-      name: {
-        contains: query,
-        mode: "insensitive",
-      }
+  // 2. Filtreleme Koşulları
+  const whereCondition = {
+    tenantId: user?.tenantId,
+    name: {
+      contains: query,
+      mode: "insensitive" as const,
     },
+  };
+
+  // 3. Toplam Sayıyı Bul (Sayfalama hesabı için)
+  const totalItems = await prisma.product.count({
+    where: whereCondition,
+  });
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+  // 4. Verileri Çek (Sadece o sayfanın verisi)
+  const products = await prisma.product.findMany({
+    where: whereCondition,
     orderBy: { id: "desc" },
+    skip: (currentPage - 1) * ITEMS_PER_PAGE,
+    take: ITEMS_PER_PAGE,
   });
 
   async function handleSave(formData: FormData) {
@@ -42,7 +58,6 @@ export default async function ProductsPage({
   }
 
   return (
-    // DÜZELTME 1: Padding mobilde p-4, masaüstünde p-10
     <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
       {/* --- Ekleme Formu --- */}
@@ -92,23 +107,22 @@ export default async function ProductsPage({
               </select>
             </div>
 
-            {/* DÜZELTME 2: Buton mobilde tam genişlik */}
-            <Button type="submit" className="w-full md:w-auto">Ekle</Button>
+            <Button type="submit" className="w-full md:w-auto">
+              Ekle
+            </Button>
           </form>
         </CardContent>
       </Card>
 
       {/* --- Liste Tablosu --- */}
       <Card>
-        {/* DÜZELTME 3: Başlık ve Arama mobilde alt alta, desktopta yan yana */}
         <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-          <CardTitle>📋 Ürün Listesi ({products.length})</CardTitle>
+          <CardTitle>📋 Ürün Listesi ({totalItems})</CardTitle>
           <div className="w-full md:w-72">
-             <Search placeholder="Ürün adı ara..." />
+            <Search placeholder="Ürün adı ara..." />
           </div>
         </CardHeader>
         <CardContent>
-          {/* DÜZELTME 4: Tabloya scroll özelliği (overflow-x-auto) */}
           <div className="rounded-md border overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead className="bg-slate-100 border-b">
@@ -124,13 +138,17 @@ export default async function ProductsPage({
                 {products.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-4 text-center text-slate-500">
-                      {query ? `"${query}" ile eşleşen ürün bulunamadı.` : "Henüz ürün eklenmemiş."}
+                      {query
+                        ? `"${query}" ile eşleşen ürün bulunamadı.`
+                        : "Henüz ürün eklenmemiş."}
                     </td>
                   </tr>
                 ) : (
                   products.map((product) => (
                     <tr key={product.id} className="border-b hover:bg-slate-50">
-                      <td className="p-4 font-medium whitespace-nowrap">{product.name}</td>
+                      <td className="p-4 font-medium whitespace-nowrap">
+                        {product.name}
+                      </td>
                       <td className="p-4 font-bold text-green-600 whitespace-nowrap">
                         {new Intl.NumberFormat("tr-TR", {
                           style: "currency",
@@ -151,27 +169,22 @@ export default async function ProductsPage({
                           {product.stock} Adet
                         </span>
                       </td>
+                      
                       <td className="p-4 flex justify-end gap-2 whitespace-nowrap">
+                        {/* 👇 YENİ: Geçmiş Butonu */}
+                        <Link href={`/dashboard/products/${product.id}`}>
+                            <Button variant="ghost" size="sm" className="h-8 text-slate-500 hover:text-blue-600">
+                                📜 Geçmiş
+                            </Button>
+                        </Link>
+
                         <Link href={`/dashboard/products/${product.id}/edit`}>
                           <Button variant="outline" size="sm" className="h-8">
                             ✏️ Düzenle
                           </Button>
                         </Link>
 
-                        <form
-                          action={async () => {
-                            "use server";
-                            await deleteProduct(product.id);
-                          }}
-                        >
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-8"
-                          >
-                            🗑️ Sil
-                          </Button>
-                        </form>
+                        <DeleteProductButton id={product.id} />
                       </td>
                     </tr>
                   ))
@@ -179,6 +192,12 @@ export default async function ProductsPage({
               </tbody>
             </table>
           </div>
+
+          {/* 👇 YENİ: Sayfalama Kontrolü */}
+          <div className="mt-4">
+            <Pagination totalPages={totalPages} />
+          </div>
+
         </CardContent>
       </Card>
     </div>

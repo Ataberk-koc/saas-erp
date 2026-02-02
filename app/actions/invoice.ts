@@ -16,7 +16,7 @@ interface InvoiceItemInput {
 }
 
 // ---------------------------------------------------------
-// 1. FATURA OLUŞTURMA (Çoklu Kalem ve Stok Düşmeli)
+// 1. FATURA OLUŞTURMA (Loglu)
 // ---------------------------------------------------------
 export async function createInvoice(formData: FormData) {
   const session = await auth()
@@ -30,10 +30,9 @@ export async function createInvoice(formData: FormData) {
     return { error: "⚠️ Ücretsiz paket limitiniz doldu (Max 5 Fatura). Lütfen Pro pakete geçin." }
   }
   
-  // Form verilerini al
   const customerId = formData.get("customerId") as string
   const date = formData.get("date") as string
-  const itemsString = formData.get("items") as string // JSON string olarak geliyor
+  const itemsString = formData.get("items") as string
 
   if (!customerId || !date || !itemsString) {
     return { error: "Gerekli alanlar eksik!" }
@@ -50,7 +49,6 @@ export async function createInvoice(formData: FormData) {
     return { error: "En az bir ürün eklemelisiniz." }
   }
 
-  // Fatura Numarası Hesapla
   const lastInvoice = await prisma.invoice.findFirst({
     where: { tenantId: user.tenantId },
     orderBy: { number: 'desc' }
@@ -60,12 +58,12 @@ export async function createInvoice(formData: FormData) {
   try {
     await prisma.$transaction(async (tx) => {
       
-      // A. Faturayı ve Kalemlerini Kaydet
+      // A. Faturayı Kaydet
       await tx.invoice.create({
         data: {
           number: nextNumber,
           date: new Date(date),
-          dueDate: new Date(date), // Vade tarihi şu an fatura tarihi ile aynı olsun
+          dueDate: new Date(date),
           tenantId: user.tenantId,
           customerId: customerId,
           status: "PENDING",
@@ -80,14 +78,25 @@ export async function createInvoice(formData: FormData) {
         }
       })
 
-      // B. STOK DÜŞME İŞLEMİ (📉)
+      // B. STOK DÜŞME ve LOGLAMA (📉)
       for (const item of items) {
-        await tx.product.update({
+        // 1. Stoğu düş ve güncel halini al
+        const updatedProduct = await tx.product.update({
           where: { id: item.productId },
           data: {
-            stock: {
-              decrement: item.quantity
-            }
+            stock: { decrement: item.quantity }
+          }
+        })
+
+        // 2. Log Kaydı At
+        await tx.inventoryLog.create({
+          data: {
+            productId: item.productId,
+            change: -item.quantity, // Eksi değer (Stok azaldı)
+            newStock: updatedProduct.stock, // Güncel stok
+            type: "SALE",
+            note: `Fatura #${nextNumber} ile satış`,
+            tenantId: user.tenantId
           }
         })
       }
@@ -105,7 +114,7 @@ export async function createInvoice(formData: FormData) {
 }
 
 // ---------------------------------------------------------
-// 2. DURUM GÜNCELLEME (Ödendi / İptal / Bekliyor)
+// 2. DURUM GÜNCELLEME
 // ---------------------------------------------------------
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
   const session = await auth()
@@ -132,13 +141,12 @@ export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
 }
 
 // ---------------------------------------------------------
-// 3. FATURA SİLME (Stok İadeli)
+// 3. FATURA SİLME (Loglu)
 // ---------------------------------------------------------
 export async function deleteInvoice(id: string) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!", success: false }
 
-  // 👇 GÜVENLİK KONTROLÜ EKLENDİ (Sadece Admin Silebilir)
   if (session.user.role !== "ADMIN") {
     return { error: "Silme yetkiniz yok! Sadece Yönetici silebilir.", success: false }
   }
@@ -156,15 +164,25 @@ export async function deleteInvoice(id: string) {
 
       if (!invoice) throw new Error("Fatura bulunamadı")
 
-      // STOK İADE İŞLEMİ (📈)
-      // Silinen faturadaki ürünleri stoğa geri ekle
+      // STOK İADE ve LOGLAMA (📈)
       for (const item of invoice.items) {
-        await tx.product.update({
+        // 1. Stoğu geri ekle
+        const updatedProduct = await tx.product.update({
           where: { id: item.productId },
           data: {
-            stock: {
-              increment: item.quantity
-            }
+            stock: { increment: item.quantity }
+          }
+        })
+
+        // 2. Log Kaydı At (İptal/İade)
+        await tx.inventoryLog.create({
+          data: {
+            productId: item.productId,
+            change: item.quantity, // Artı değer (Stok arttı)
+            newStock: updatedProduct.stock,
+            type: "CANCEL",
+            note: `Fatura #${invoice.number} iptali/silinmesi`,
+            tenantId: user.tenantId
           }
         })
       }
@@ -188,7 +206,7 @@ export async function deleteInvoice(id: string) {
 }
 
 // ---------------------------------------------------------
-// 4. FATURA GÜNCELLEME / DÜZENLEME (Stok Düzeltmeli) 🆕
+// 4. FATURA GÜNCELLEME (Loglu)
 // ---------------------------------------------------------
 export async function updateInvoice(formData: FormData) {
     const session = await auth();
@@ -216,7 +234,7 @@ export async function updateInvoice(formData: FormData) {
     try {
       await prisma.$transaction(async (tx) => {
         
-        // A. Fatura Başlığını Güncelle
+        // 1. Fatura Başlığını Güncelle
         await tx.invoice.update({
           where: { 
             id: invoiceId,
@@ -229,8 +247,7 @@ export async function updateInvoice(formData: FormData) {
           },
         });
   
-        // B. ESKİ STOKLARI İADE ET (Revert Stock) 📈
-        // Faturadaki eski ürünleri bulup stoklarını geri ekliyoruz
+        // 2. ESKİ STOKLARI İADE ET (Revert Stock & Log) 📈
         const oldInvoice = await tx.invoice.findUnique({
             where: { id: invoiceId },
             include: { items: true }
@@ -238,19 +255,32 @@ export async function updateInvoice(formData: FormData) {
 
         if (oldInvoice) {
             for (const oldItem of oldInvoice.items) {
-                await tx.product.update({
+                // Stoğu geri ekle
+                const updatedProduct = await tx.product.update({
                     where: { id: oldItem.productId },
                     data: { stock: { increment: oldItem.quantity } }
+                });
+
+                // İade Logu
+                await tx.inventoryLog.create({
+                    data: {
+                        productId: oldItem.productId,
+                        change: oldItem.quantity,
+                        newStock: updatedProduct.stock,
+                        type: "CANCEL",
+                        note: `Fatura #${oldInvoice.number} güncelleme (eski stok iadesi)`,
+                        tenantId: user.tenantId
+                    }
                 });
             }
         }
 
-        // C. Eski Kalemleri Sil
+        // 3. Eski Kalemleri Sil
         await tx.invoiceItem.deleteMany({
           where: { invoiceId: invoiceId },
         });
   
-        // D. Yeni Kalemleri Ekle ve YENİ STOK DÜŞ (Apply New Stock) 📉
+        // 4. Yeni Kalemleri Ekle ve STOK DÜŞ (Apply New Stock & Log) 📉
         for (const item of items) {
           await tx.invoiceItem.create({
             data: {
@@ -262,10 +292,22 @@ export async function updateInvoice(formData: FormData) {
             },
           });
 
-          // Yeni miktarı stoktan düş
-          await tx.product.update({
+          // Stoğu düş
+          const updatedProduct = await tx.product.update({
             where: { id: item.productId },
             data: { stock: { decrement: item.quantity } }
+          });
+
+          // Satış Logu
+          await tx.inventoryLog.create({
+            data: {
+                productId: item.productId,
+                change: -item.quantity,
+                newStock: updatedProduct.stock,
+                type: "SALE",
+                note: `Fatura #${oldInvoice?.number || '?'} güncelleme (yeni işlem)`,
+                tenantId: user.tenantId
+            }
           });
         }
       });
