@@ -70,14 +70,19 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
+  href="/dashboard/invoices?type=PURCHASE" 
+  icon="🚛"
+  label="Alış Faturaları"
+  onClick={() => setIsOpen(false)}
+/>
+
+          <SidebarLink
             href="/dashboard/invoices"
             icon="🧾"
             label="Faturalar"
             onClick={() => setIsOpen(false)}
           />
-          
-          {/* ❌ ESKİ HATALI SATIR BURADAYDI (SİLDİK) */}
-          
+                    
           <SidebarLink
             href="/dashboard/expense"
             icon="💸"

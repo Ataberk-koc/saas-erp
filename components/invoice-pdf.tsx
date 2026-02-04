@@ -10,7 +10,7 @@ Font.register({
 })
 
 const styles = StyleSheet.create({
-  page: { padding: 30, fontFamily: "Roboto", fontSize: 12, color: "#333" },
+  page: { padding: 30, fontFamily: "Roboto", fontSize: 12, color: "#333", position: "relative" },
   header: { flexDirection: "row", justifyContent: "space-between", marginBottom: 20, borderBottomWidth: 1, borderBottomColor: "#eee", paddingBottom: 10 },
   brand: { fontSize: 24, fontWeight: "bold", color: "#2563eb" },
   invoiceTitle: { fontSize: 20, fontWeight: "bold", textAlign: "right" },
@@ -30,7 +30,25 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: "row", marginBottom: 5 },
   totalLabel: { width: 100, textAlign: "right", paddingRight: 10, color: "#666" },
   totalValue: { width: 80, textAlign: "right", fontWeight: "bold" },
-  grandTotal: { fontSize: 14, color: "#2563eb" }
+  grandTotal: { fontSize: 14, color: "#2563eb" },
+  // 👇 YENİ EKLENEN STİL (DAMGA)
+  stamp: {
+    position: "absolute",
+    top: 150,
+    right: 50,
+    transform: "rotate(-20deg)",
+    borderWidth: 4,
+    padding: 10,
+    paddingHorizontal: 20,
+    opacity: 0.5,
+    borderRadius: 5,
+    zIndex: 10,
+  },
+  stampText: {
+    fontSize: 30,
+    fontWeight: "heavy", // react-pdf'de bold yerine heavy bazen daha iyi sonuç verir
+    textTransform: "uppercase",
+  }
 })
 
 interface InvoicePDFProps {
@@ -49,6 +67,21 @@ export const InvoicePDF = ({ invoice, tenant }: InvoicePDFProps) => {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
+        
+        {/* 👇 YENİ EKLENEN KISIM: DAMGA KONTROLÜ */}
+        {invoice.status === "PAID" && (
+          <View style={[styles.stamp, { borderColor: "#16a34a" }]}>
+             <Text style={[styles.stampText, { color: "#16a34a" }]}>ÖDENDİ</Text>
+          </View>
+        )}
+        
+        {invoice.status === "CANCELLED" && (
+          <View style={[styles.stamp, { borderColor: "#dc2626" }]}>
+             <Text style={[styles.stampText, { color: "#dc2626" }]}>İPTAL</Text>
+          </View>
+        )}
+        {/* 👆 DAMGA KONTROLÜ BİTİŞ */}
+
         <View style={styles.header}>
           <View>
             <Text style={styles.brand}>{tenant?.name || "ŞİRKET ADI"}</Text>

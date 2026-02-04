@@ -79,8 +79,9 @@ model Product {
   tenant    Tenant @relation(fields: [tenantId], references: [id])
   
   invoiceItems InvoiceItem[]
-  // 👇 DÜZELTME 2: Ürün logları ilişkisi eklendi
   logs         InventoryLog[] 
+
+  buyPrice    Decimal  @default(0) // Alış Fiyatı (Yeni)  
 }
 
 // 5. FATURALAR
@@ -98,6 +99,8 @@ model Invoice {
   customerId String
   customer   Customer @relation(fields: [customerId], references: [id])
 
+  type       InvoiceType @default(SALES)
+  documentNumber String?
   items      InvoiceItem[]
 }
 
@@ -192,4 +195,9 @@ enum LogType {
   PURCHASE   // Alım
   ADJUSTMENT // Elle Düzeltme
   CANCEL     // İptal/İade
+}
+
+enum InvoiceType {
+  SALES      // Satış Faturası
+  PURCHASE   // Alış Faturası
 }
