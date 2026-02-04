@@ -30,8 +30,8 @@ model Tenant {
   invoices      Invoice[]
   expenses      Expense[]
   aiAnalyses    AiAnalysis[]
-  // 👇 DÜZELTME 1: İlişki karşıtlığı buraya eklendi
   inventoryLogs InventoryLog[] 
+  categories    Category[]
 }
 
 // 2. KULLANICILAR
@@ -136,12 +136,24 @@ enum InvoiceStatus {
   OVERDUE   // Gecikmiş
 }
 
+// 2. YENİ MODEL: KATEGORİLER TABLOSU
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  type      String   @default("EXPENSE") // İleride GELİR kategorisi de yapabiliriz
+  
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
 model Expense {
   id          String   @id @default(uuid())
   description String
   amount      Decimal
   date        DateTime @default(now())
-  category    ExpenseCategory @default(OTHER)
+  category    String
   tenantId    String
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
 
@@ -164,13 +176,13 @@ enum Role {
   USER
 }
 
-enum ExpenseCategory {
-  RENT
-  FOOD
-  TRANSPORT
-  MARKETING
-  OTHER
-}
+//enum ExpenseCategory {
+//  RENT
+//  FOOD
+//  TRANSPORT
+//  MARKETING
+//  OTHER
+//}
 
 // 👇 YENİ TABLO: STOK GEÇMİŞİ
 model InventoryLog {

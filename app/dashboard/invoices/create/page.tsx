@@ -28,6 +28,7 @@ export default async function CreateInvoicePage() {
   const products = productsRaw.map((product) => ({
     ...product,
     price: Number(product.price),
+    buyPrice: Number(product.buyPrice),
   }))
 
   return (

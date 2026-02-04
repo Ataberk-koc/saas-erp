@@ -3,69 +3,95 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
-import { ExpenseCategory } from "@prisma/client" // 👈 Enum'ı import ettik
+import { z } from "zod"
+
+// --- 1. KATEGORİ İŞLEMLERİ ---
+
+// Yeni Kategori Ekleme
+export async function addCategory(formData: FormData) {
+  const session = await auth()
+  if (!session?.user?.tenantId) return { error: "Yetkisiz işlem" }
+
+  const name = formData.get("name") as string
+
+  if (!name) return { error: "Kategori adı boş olamaz" }
+
+  try {
+    // Aynı isimde kategori var mı kontrol et
+    const existing = await prisma.category.findFirst({
+      where: { 
+        name: { equals: name, mode: "insensitive" },
+        tenantId: session.user.tenantId
+      }
+    })
+
+    if (existing) return { error: "Bu kategori zaten var." }
+
+    await prisma.category.create({
+      data: {
+        name: name,
+        type: "EXPENSE",
+        tenantId: session.user.tenantId
+      }
+    })
+
+    revalidatePath("/dashboard/expense")
+    return { success: "Kategori eklendi" }
+  } catch  {
+    return { error: "Kategori eklenirken hata oluştu" }
+  }
+}
+
+// --- 2. GİDER İŞLEMLERİ ---
+
+const ExpenseSchema = z.object({
+  description: z.string().min(1, "Açıklama giriniz"),
+  amount: z.coerce.number().min(0, "Tutar giriniz"),
+  category: z.string().min(1, "Kategori seçiniz"), // Artık String
+  date: z.coerce.date()
+})
 
 export async function addExpense(formData: FormData) {
   const session = await auth()
-  if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
+  if (!session?.user?.tenantId) return { error: "Yetkisiz işlem" }
 
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
-  if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
-
-  const description = formData.get("description") as string
-  
-  // 👇 Yeni Alanlar
-  const category = formData.get("category") as ExpenseCategory || "OTHER"
-  const dateStr = formData.get("date") as string
-  const date = dateStr ? new Date(dateStr) : new Date()
-
-  // Fiyatı Temizle (Mevcut mantığın korundu)
-  let amountString = formData.get("amount") as string
-  if (amountString.includes(".") && amountString.includes(",")) {
-     amountString = amountString.replace(/\./g, "")
-  } else if (amountString.includes(".") && !amountString.includes(",")) {
-     amountString = amountString.replace(/\./g, "")
+  // Form verilerini object'e çevirip doğrula
+  const rawData = {
+    description: formData.get("description"),
+    amount: formData.get("amount"),
+    category: formData.get("category"),
+    date: formData.get("date") || new Date()
   }
-  amountString = amountString.replace(",", ".")
-  const amount = Number(amountString)
+
+  const validated = ExpenseSchema.safeParse(rawData)
+  if (!validated.success) return { error: "Form verileri geçersiz" }
 
   try {
     await prisma.expense.create({
       data: {
-        description,
-        amount,
-        category, // 👈 Veritabanına kategori eklendi
-        date: date,     // 👈 Veritabanına tarih eklendi
-        tenantId: user.tenantId
+        ...validated.data,
+        tenantId: session.user.tenantId
       }
     })
 
-    // Dosya yoluna göre path'i güncelledim (expenses -> expense)
     revalidatePath("/dashboard/expense")
-    revalidatePath("/dashboard") 
-    return { success: true }
-  } catch (error) {
-    console.log(error)
-    return { error: "Gider eklenirken hata oluştu." }
+    return { success: "Gider kaydedildi" }
+  } catch {
+    return { error: "İşlem başarısız" }
   }
 }
 
 export async function deleteExpense(id: string) {
   const session = await auth()
-  if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
-  
-  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!session?.user?.tenantId) return { error: "Yetkisiz işlem" }
 
   try {
     await prisma.expense.delete({
-      where: { id: id, tenantId: user?.tenantId }
+      where: { id: id, tenantId: session.user.tenantId }
     })
-    
-    // Dosya yoluna göre path'i güncelledim
     revalidatePath("/dashboard/expense")
-    revalidatePath("/dashboard")
-    return { success: true }
+    return { success: "Silindi" }
   } catch {
-    return { error: "Silinirken hata oluştu." }
+    return { error: "Silinemedi" }
   }
 }

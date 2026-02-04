@@ -25,10 +25,10 @@ export async function addCustomer(formData: FormData) {
   // 3. Form verilerini al ve Hazırla
   const rawData = {
     name: formData.get("name"),
-    email: formData.get("email"),
-    phone: formData.get("phone"),
+    email: formData.get("email") || "",
+    phone: formData.get("phone") || "",
     type: formData.get("type"), // "BUYER" veya "SUPPLIER"
-    address: formData.get("address"),
+    address: formData.get("address") || "",
   }
 
   // 4. Zod ile Validasyon (Denetleme) Yap 🛡️
