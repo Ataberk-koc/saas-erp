@@ -64,15 +64,15 @@ export async function addCustomer(formData: FormData) {
 
 export async function deleteCustomer(id: string) {
   const session = await auth()
-  if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
+  if (!session?.user?.email) throw new Error("Yetkisiz işlem!")
   
   // 👇 SİLME İŞLEMİNİ SADECE ADMIN YAPABİLİR
   if (session.user.role !== "ADMIN") {
-    return { error: "Müşteri silme yetkiniz yok! Sadece Yönetici silebilir." }
+    throw new Error("Müşteri silme yetkiniz yok! Sadece Yönetici silebilir.")
   }
   
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
-  if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
+  if (!user?.tenantId) throw new Error("Şirket bulunamadı!")
 
   try {
     // Transaction ile güvenli silme
@@ -103,6 +103,6 @@ export async function deleteCustomer(id: string) {
     revalidatePath("/dashboard/customers")
     return { success: true }
   } catch {
-    return { error: "Müşteri silinirken hata oluştu." }
+    throw new Error("Müşteri silinirken hata oluştu.")
   }
 }

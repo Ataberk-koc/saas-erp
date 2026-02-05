@@ -1,12 +1,12 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
-import { deleteCustomer } from "@/app/actions/customer"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import Search from "@/components/search"
 import { CustomerForm } from "@/components/dashboard/customer-form"
+import { DeleteCustomerButton } from "@/components/dashboard/delete-customer-button"
 import Pagination from "@/components/pagination" 
 
 const ITEMS_PER_PAGE = 10
@@ -120,13 +120,7 @@ export default async function CustomersPage({
                             <Link href={`/dashboard/customers/${customer.id}`}>
                                 <Button size="sm" variant="outline">Detay</Button>
                             </Link>
-
-                            <form action={async () => {
-                                "use server"
-                                await deleteCustomer(customer.id)
-                            }}>
-                                <Button size="sm" variant="destructive">Sil</Button>
-                            </form>
+                            <DeleteCustomerButton customerId={customer.id} />
                         </div>
                       </td>
                     </tr>
