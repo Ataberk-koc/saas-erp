@@ -24,14 +24,7 @@ export function DeleteCustomerButton({ customerId }: { customerId: string }) {
     setError(null)
 
     try {
-      const result = await deleteCustomer(customerId)
-
-      if (result.error) {
-        setError(result.error)
-        setIsLoading(false)
-        return
-      }
-
+      await deleteCustomer(customerId)
       setIsOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Bilinmeyen bir hata oluştu")
