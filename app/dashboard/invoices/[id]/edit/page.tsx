@@ -54,7 +54,8 @@ export default async function EditInvoicePage({
 
   const serializedProducts = products.map(p => ({
     ...p,
-    price: Number(p.price)
+    price: Number(p.price),
+    buyPrice: Number(p.buyPrice)
   }));
 
   return (

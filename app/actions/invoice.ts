@@ -102,10 +102,54 @@ export async function deleteInvoice(id: string) {
   }
 }
 
+export async function updateInvoice(
+  invoiceId: string,
+  formData: FormData,
+  items: InvoiceItemInput[]
+) {
+  const session = await auth()
+  if (!session?.user?.email) return { error: "Yetkisiz işlem" }
+
+  const user = await prisma.user.findUnique({ where: { email: session.user.email } })
+  if (!user?.tenantId) return { error: "Şirket bulunamadı" }
+
+  const customerId = formData.get("customerId") as string
+  const dateStr = formData.get("date") as string
+  const date = dateStr ? new Date(dateStr) : new Date()
+
+  try {
+    // 1. Eski kalemleri sil
+    await prisma.invoiceItem.deleteMany({ where: { invoiceId } })
+
+    // 2. Faturayı güncelle ve yeni kalemleri ekle
+    await prisma.invoice.update({
+      where: { id: invoiceId, tenantId: user.tenantId },
+      data: {
+        customerId,
+        date,
+        items: {
+          create: items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+            vatRate: item.vatRate,
+          })),
+        },
+      },
+    })
+
+    revalidatePath("/dashboard")
+    revalidatePath("/dashboard/invoices")
+    revalidatePath("/dashboard/products")
+    return { success: true }
+  } catch (error) {
+    console.log("Fatura Güncelleme Hatası:", error)
+    return { error: "Fatura güncellenirken hata çıktı." }
+  }
+}
+
 export async function updateInvoiceStatus(id: string, status: InvoiceStatus) {
-    // ... (önceki kodun aynısı)
     await prisma.invoice.update({ where: { id }, data: { status } })
     revalidatePath("/dashboard/invoices")
     return { success: true }
-    // ...
 }

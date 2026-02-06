@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { createInvoice } from "@/app/actions/invoice"
+import { createInvoice, updateInvoice } from "@/app/actions/invoice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
@@ -23,9 +23,22 @@ interface Product {
   buyPrice?: number | null // null gelebilme ihtimaline karşı
 }
 
+interface InitialData {
+  id: string
+  customerId: string
+  date: Date
+  items: {
+    productId: string
+    quantity: number
+    price: number
+    vatRate: number
+  }[]
+}
+
 interface Props {
   customers: Customer[]
   products: Product[]
+  initialData?: InitialData
 }
 
 interface InvoiceItem {
@@ -35,18 +48,26 @@ interface InvoiceItem {
   vatRate: number | string
 }
 
-export function InvoiceForm({ customers, products }: Props) {
+export function InvoiceForm({ customers, products, initialData }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const isEditMode = !!initialData
   
   // URL'den fatura tipini al (Varsayılan: SATIŞ)
   // ?type=PURCHASE ise Alış Faturası moduna geçer
   const type = searchParams.get("type") === "PURCHASE" ? "PURCHASE" : "SALES"
   
   // State Başlangıcı
-  const [items, setItems] = useState<InvoiceItem[]>([
-    { productId: "", quantity: 1, price: 0, vatRate: 20 }
-  ])
+  const [items, setItems] = useState<InvoiceItem[]>(
+    initialData
+      ? initialData.items.map(item => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          vatRate: item.vatRate,
+        }))
+      : [{ productId: "", quantity: 1, price: 0, vatRate: 20 }]
+  )
 
   // --- 1. ARA TOPLAM HESAPLAMA (Görünüm İçin) ---
   const calculateTotal = () => {
@@ -76,12 +97,14 @@ export function InvoiceForm({ customers, products }: Props) {
     }))
 
     // Server Action'ı çağır
-    const res = await createInvoice(formData, cleanItems)
+    const res = isEditMode
+      ? await updateInvoice(initialData.id, formData, cleanItems)
+      : await createInvoice(formData, cleanItems)
 
     if (res?.error) {
         toast.error(res.error)
     } else {
-        toast.success(type === 'SALES' ? "✅ Satış faturası kesildi!" : "✅ Alış faturası işlendi!")
+        toast.success(isEditMode ? "✅ Fatura güncellendi!" : (type === 'SALES' ? "✅ Satış faturası kesildi!" : "✅ Alış faturası işlendi!"))
         router.push("/dashboard/invoices") // Listeye yönlendir
         router.refresh() // Verileri yenile
     }
@@ -148,7 +171,7 @@ export function InvoiceForm({ customers, products }: Props) {
                 <label className="text-sm font-medium text-slate-500">
                     {type === 'PURCHASE' ? 'Tedarikçi Seçimi' : 'Müşteri Seçimi'}
                 </label>
-                <select name="customerId" className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                <select name="customerId" defaultValue={initialData?.customerId || ""} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
                     <option value="">Seçiniz...</option>
                     {customers.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
@@ -157,7 +180,7 @@ export function InvoiceForm({ customers, products }: Props) {
             </div>
             <div>
                 <label className="text-sm font-medium text-slate-500">Fatura Tarihi</label>
-                <Input name="date" type="date" defaultValue={new Date().toISOString().split('T')[0]} />
+                <Input name="date" type="date" defaultValue={initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} />
             </div>
         </CardContent>
       </Card>
@@ -250,7 +273,7 @@ export function InvoiceForm({ customers, products }: Props) {
 
       <div className="flex justify-end">
           <Button type="submit" size="lg" className={`w-full md:w-auto ${type === 'PURCHASE' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-              {type === 'PURCHASE' ? 'Alış Faturasını Kaydet' : 'Satış Faturasını Onayla'}
+              {isEditMode ? 'Faturayı Güncelle' : (type === 'PURCHASE' ? 'Alış Faturasını Kaydet' : 'Satış Faturasını Onayla')}
           </Button>
       </div>
 
