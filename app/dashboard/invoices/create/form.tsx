@@ -28,9 +28,16 @@ export default function CreateInvoiceForm({ customers, products }: Props) {
   async function handleAction(formData: FormData) {
     setIsLoading(true)
     
-    // Server Action'ı çağırıyoruz
-    // TypeScript hatasını önlemek için dönüş tipini belirtiyoruz
-    const result = await createInvoice(formData) as { error?: string }
+    // FormData'dan ürün bilgilerini çıkarıp items dizisi oluşturuyoruz
+    const productId = formData.get("productId") as string
+    const quantity = Number(formData.get("quantity")) || 1
+    const vatRate = Number(formData.get("vatRate")) || 0
+    const product = products.find((p) => p.id === productId)
+    const price = product?.price || 0
+
+    const items = [{ productId, quantity, price, vatRate }]
+
+    const result = await createInvoice(formData, items) as { error?: string }
     
     if (!result?.error) {
       // ✅ BAŞARILI DURUM
