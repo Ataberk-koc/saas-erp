@@ -66,6 +66,7 @@ export default async function InvoiceDetailPage({
       product: {
         ...item.product,
         price: Number(item.product.price),
+        buyPrice: Number(item.product.buyPrice),
       },
     })),
   };

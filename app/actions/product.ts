@@ -45,13 +45,16 @@ export async function addProduct(formData: FormData) {
 
   const { name, price, stock, vatRate } = validation.data;
 
+  // KDV dahil fiyat hesapla (ör: 1 TL + %20 KDV = 1.20 TL)
+  const priceWithVat = price * (1 + vatRate / 100);
+
   try {
     // Ürün eklerken de başlangıç stoğu için log atabiliriz (Opsiyonel ama yararlı)
     await prisma.$transaction(async (tx) => {
       const newProduct = await tx.product.create({
         data: {
           name,
-          price,
+          price: priceWithVat,
           stock,
           vatRate,
           tenantId: user.tenantId,

@@ -16,13 +16,12 @@ export default function DeleteButton({ invoiceId }: { invoiceId: string }) {
       const result = await deleteInvoice(invoiceId)
       
       if (result.success) {
-        // Başarılı silme mesajı göster
-        showSuccessToast("Fatura başarıyla silindi!")
+        // Önce listeye yönlendir (404'ü önlemek için hemen çık)
+        router.replace("/dashboard/invoices")
+        router.refresh()
         
-        // 2 saniye sonra listeye yönlendir
-        setTimeout(() => {
-          router.push("/dashboard/invoices")
-        }, 2000)
+        // Sonra mesajı göster
+        showSuccessToast("Fatura başarıyla silindi!")
       } else {
         showErrorToast(result.error || "Silme işlemi başarısız oldu!")
         setShowConfirm(false)

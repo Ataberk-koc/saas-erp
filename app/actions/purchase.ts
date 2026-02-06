@@ -80,7 +80,7 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
               tenantId: session.user.tenantId,
               name: item.productName,
               stock: item.quantity,      // İlk stok
-              price: item.price * 1.3,   // Otomatik %30 kâr marjı ile satış fiyatı (İstersen değiştirebilirsin)
+              price: item.price * (1 + item.vatRate / 100),   // KDV dahil fiyat (ör: 10000 * 1.20 = 12000)
               vatRate: item.vatRate
             }
           })

@@ -32,7 +32,8 @@ export default async function EditProductPage({
   // Veriyi Client Component'e uygun hale getir (Decimal -> Number)
   const productData = {
     ...product,
-    price: Number(product.price)
+    price: Number(product.price),
+    buyPrice: Number(product.buyPrice)
   }
 
   return (
