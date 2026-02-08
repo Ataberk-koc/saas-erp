@@ -26,8 +26,9 @@ export default function EditProductFormClient({ product }: EditProductFormProps)
     setLoading(true)
 
     const formData = new FormData(event.currentTarget)
+    formData.set("id", product.id)
     
-    const result = await updateProduct(product.id, formData) as { error?: string }
+    const result = await updateProduct(formData) as { error?: string }
 
     if (result?.error) {
       toast.error(result.error)
