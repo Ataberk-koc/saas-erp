@@ -10,6 +10,7 @@ import { z } from "zod"
 const PurchaseSchema = z.object({
   supplierId: z.string().min(1, "Tedarikçi seçmelisiniz"), // Mevcut Cari ID'si
   documentNumber: z.string().optional(), // Tedarikçinin kestiği fatura no
+  gcbNo: z.string().optional(), // Gümrük Çıkış Beyannamesi Numarası
   date: z.date(),
   items: z.array(z.object({
     productName: z.string().min(1, "Ürün adı giriniz"),
@@ -26,7 +27,7 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
   const validated = PurchaseSchema.safeParse(data)
   if (!validated.success) return { error: "Form verileri geçersiz" }
 
-  const { supplierId, documentNumber, date, items } = validated.data
+  const { supplierId, documentNumber, gcbNo, date, items } = validated.data
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -46,6 +47,7 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
           type: "PURCHASE",       // 👈 ÖNEMLİ: Alış Faturası
           number: nextNumber,     // İç takip no
           documentNumber: documentNumber, // Tedarikçi Fatura No
+          gcbNo: gcbNo,                     // GÇB Numarası
           date: date,
           dueDate: date,
           status: "PAID",         // Alışlar genelde peşin/ödendi girilir

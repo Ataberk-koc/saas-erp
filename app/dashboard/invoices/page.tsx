@@ -120,6 +120,9 @@ export default async function InvoicesPage({
                   <th className="p-4 font-medium whitespace-nowrap">
                     {isPurchase ? "Belge No" : "Fatura No"}
                   </th>
+                  {isPurchase && (
+                    <th className="p-4 font-medium whitespace-nowrap">GÇB No</th>
+                  )}
                   <th className="p-4 font-medium whitespace-nowrap">
                     {isPurchase ? "Tedarikçi" : "Müşteri"}
                   </th>
@@ -132,7 +135,7 @@ export default async function InvoicesPage({
               <tbody>
                 {invoices.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-slate-500">
+                    <td colSpan={isPurchase ? 7 : 6} className="p-8 text-center text-slate-500">
                       {isPurchase ? "Henüz alış faturası girilmemiş." : "Henüz satış faturası kesilmemiş."}
                     </td>
                   </tr>
@@ -150,6 +153,11 @@ export default async function InvoicesPage({
                             {/* Alış ise Belge No, Satış ise Otomatik No */}
                             {isPurchase ? (inv.documentNumber || "-") : `#${inv.number}`}
                         </td>
+                        {isPurchase && (
+                          <td className="p-4 text-slate-600">
+                            {inv.gcbNo || "-"}
+                          </td>
+                        )}
                         <td className="p-4 font-medium">{inv.customer.name}</td>
                         <td className="p-4 text-slate-500">
                             {new Date(inv.date).toLocaleDateString("tr-TR")}

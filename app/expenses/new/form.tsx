@@ -33,6 +33,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
   // --- Form State'leri ---
   const [supplierId, setSupplierId] = useState("")
   const [documentNumber, setDocumentNumber] = useState("")
+  const [gcbNo, setGcbNo] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   
   const [items, setItems] = useState<InvoiceItem[]>([
@@ -85,6 +86,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
     const formData = {
       supplierId,
       documentNumber,
+      gcbNo,
       date: new Date(date),
       items: items.map(item => ({
         ...item,
@@ -118,7 +120,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
           )}
 
           {/* 1. FATURA BAŞLIK BİLGİLERİ */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             
             <div className="space-y-2">
               <Label>Tedarikçi / Cari Hesap</Label>
@@ -146,6 +148,16 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
                 value={documentNumber} 
                 onChange={(e) => setDocumentNumber(e.target.value)} 
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label>GÇB No</Label>
+              <Input 
+                placeholder="Gümrük Çıkış Beyanname No" 
+                value={gcbNo} 
+                onChange={(e) => setGcbNo(e.target.value)} 
+              />
+              <p className="text-[10px] text-gray-400">Gümrük Çıkış Beyannamesi numarası (opsiyonel)</p>
             </div>
 
             <div className="space-y-2">

@@ -192,6 +192,12 @@ export default async function InvoiceDetailPage({
           <div className="text-left md:text-right w-full md:w-auto">
             <h2 className="text-4xl font-bold text-slate-200">FATURA</h2>
             <p className="mt-2 font-medium">No: #{invoice.number}</p>
+            {invoice.documentNumber && (
+              <p className="text-sm text-slate-500">Belge No: {invoice.documentNumber}</p>
+            )}
+            {invoice.gcbNo && (
+              <p className="text-sm text-slate-500">GÇB No: {invoice.gcbNo}</p>
+            )}
             <p className="text-sm text-slate-500">
               {new Date(invoice.date).toLocaleDateString("tr-TR")}
             </p>

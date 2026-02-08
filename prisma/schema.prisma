@@ -101,6 +101,7 @@ model Invoice {
 
   type       InvoiceType @default(SALES)
   documentNumber String?
+  gcbNo          String?   // Gümrük Çıkış Beyannamesi Numarası (Alış Faturaları için)
   items      InvoiceItem[]
 
   payments Payment[]
