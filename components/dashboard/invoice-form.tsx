@@ -4,41 +4,26 @@ import { useState } from "react"
 import { createInvoice, updateInvoice } from "@/app/actions/invoice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent } from "@/components/ui/card"
-import { Plus, Trash2 } from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Plus, Trash2, Wallet } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 
-// --- TİP TANIMLAMALARI ---
+// --- TİP TANIMLAMALARI (Type-Safety İçin) ---
 interface Customer {
   id: string
   name: string
+  // Diğer alanlar opsiyonel olabilir
+  [key: string]: unknown
 }
 
 interface Product {
   id: string
   name: string
-  price: number
+  price: number | object // Prisma Decimal bazen obje gelebilir
+  buyPrice: number | object
   vatRate: number
-  buyPrice?: number | null // null gelebilme ihtimaline karşı
-}
-
-interface InitialData {
-  id: string
-  customerId: string
-  date: Date
-  items: {
-    productId: string
-    quantity: number
-    price: number
-    vatRate: number
-  }[]
-}
-
-interface Props {
-  customers: Customer[]
-  products: Product[]
-  initialData?: InitialData
+  stock?: number
 }
 
 interface InvoiceItem {
@@ -48,104 +33,153 @@ interface InvoiceItem {
   vatRate: number | string
 }
 
+interface Payment {
+  amount: number | string
+  date: string
+  note: string
+}
+
+interface InitialData {
+  id: string
+  customerId: string
+  date: Date | string
+  type: "SALES" | "PURCHASE"
+  items: InvoiceItem[]
+  payments?: Payment[]
+}
+
+interface Props {
+  customers: Customer[]
+  products: Product[]
+  initialData?: InitialData
+}
+
 export function InvoiceForm({ customers, products, initialData }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const isEditMode = !!initialData
   
-  // URL'den fatura tipini al (Varsayılan: SATIŞ)
-  // ?type=PURCHASE ise Alış Faturası moduna geçer
-  const type = searchParams.get("type") === "PURCHASE" ? "PURCHASE" : "SALES"
+  // Fatura Tipi (Varsayılan SALES, URL'den PURCHASE gelebilir)
+  const type = initialData?.type || (searchParams.get("type") === "PURCHASE" ? "PURCHASE" : "SALES")
   
-  // State Başlangıcı
-  const [items, setItems] = useState<InvoiceItem[]>(
-    initialData
-      ? initialData.items.map(item => ({
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          vatRate: item.vatRate,
-        }))
-      : [{ productId: "", quantity: 1, price: 0, vatRate: 20 }]
+  // --- STATE ---
+  const [items, setItems] = useState<InvoiceItem[]>(initialData?.items || [
+    { productId: "", quantity: 1, price: 0, vatRate: 20 }
+  ])
+
+  // Ödemeler State'i
+  const [payments, setPayments] = useState<Payment[]>(
+    initialData?.payments?.map((p) => ({
+        amount: Number(p.amount),
+        date: new Date(p.date).toISOString().split('T')[0],
+        note: p.note || ""
+    })) || []
   )
 
-  // --- 1. ARA TOPLAM HESAPLAMA (Görünüm İçin) ---
+  // --- HESAPLAMALAR ---
   const calculateTotal = () => {
     return items.reduce((acc, item) => {
       const price = Number(item.price) || 0
       const qty = Number(item.quantity) || 1
-      const vat = Number(item.vatRate) || 0 // Varsayılan 0 olsun, ürün seçince dolar
-      
-      const lineTotal = price * qty
-      const taxAmount = lineTotal * (vat / 100)
-      
-      return acc + lineTotal + taxAmount
+      const vat = Number(item.vatRate) || 0
+      return acc + (price * qty * (1 + vat / 100))
     }, 0)
   }
 
-  // --- 2. FORM GÖNDERİMİ (SERVER ACTION) ---
+  const calculatePaid = () => {
+    return payments.reduce((acc, p) => acc + (Number(p.amount) || 0), 0)
+  }
+
+  const totalAmount = calculateTotal()
+  const paidAmount = calculatePaid()
+  const remainingAmount = totalAmount - paidAmount
+
+  // --- ACTIONS ---
+
+  // Hızlı Butonlar
+  const handleMarkAsPaid = () => {
+    if (remainingAmount <= 0) {
+        toast.info("Zaten ödendi!")
+        return
+    }
+    setPayments([...payments, { 
+        amount: remainingAmount, 
+        date: new Date().toISOString().split('T')[0],
+        note: "Tamamı ödendi" 
+    }])
+  }
+
+  const handleClearPayments = () => {
+    if (confirm("Tüm ödeme kayıtları silinecek. Emin misin?")) {
+        setPayments([])
+    }
+  }
+
+  // Kaydetme
   async function handleSubmit(formData: FormData) {
-    // Fatura Tipini Elle Ekliyoruz (Garanti olsun)
     formData.set("type", type)
-    
-    // Verileri backend formatına çevir (String -> Number)
-    const cleanItems = items.map(i => ({
+
+    const cleanItems = items.map((i) => ({
         productId: i.productId,
         quantity: Number(i.quantity),
-        price: Number(i.price), // Burası "Birim Fiyat"tır (KDV Hariç)
+        price: Number(i.price),
         vatRate: Number(i.vatRate)
     }))
 
-    // Server Action'ı çağır
-    const res = isEditMode
-      ? await updateInvoice(initialData.id, formData, cleanItems)
-      : await createInvoice(formData, cleanItems)
+    // Ödemeleri de gönderiyoruz
+    const cleanPayments = payments.map(p => ({
+        amount: Number(p.amount),
+        date: p.date,
+        note: p.note
+    }))
+
+    let res;
+    if (initialData?.id) {
+        // GÜNCELLEME MODU
+        res = await updateInvoice(initialData.id, formData, cleanItems, cleanPayments)
+    } else {
+        // OLUŞTURMA MODU
+        res = await createInvoice(formData, cleanItems, cleanPayments)
+    }
 
     if (res?.error) {
         toast.error(res.error)
     } else {
-        toast.success(isEditMode ? "✅ Fatura güncellendi!" : (type === 'SALES' ? "✅ Satış faturası kesildi!" : "✅ Alış faturası işlendi!"))
-        router.push("/dashboard/invoices") // Listeye yönlendir
-        router.refresh() // Verileri yenile
+        toast.success("İşlem Başarılı!")
+        router.push("/dashboard/invoices")
+        router.refresh()
     }
   }
 
-  // --- 3. ÜRÜN SEÇİLİNCE FİYAT GETİR ---
+  // --- YARDIMCI FONKSİYONLAR ---
   const handleProductChange = (index: number, productId: string) => {
-    const product = products.find(p => p.id === productId)
+    const product = products.find((p) => p.id === productId)
     
-    // Güvenli State Güncellemesi
-    setItems(prevItems => {
-        const newItems = [...prevItems]
-        const updatedItem = { ...newItems[index], productId }
-
+    setItems((prev) => {
+        const newItems = [...prev]
         if (product) {
-            // Eğer ALIŞ faturası kesiyorsak:
-            // Varsa 'Alış Fiyatı'nı getir, yoksa '0' getir (Satış fiyatını getirme!)
-            // Böylece kullanıcı maliyeti kendi girsin.
+            let priceToUse = 0
             
-            let priceToUse = 0;
-            
-            if (type === 'PURCHASE') {
-                 priceToUse = Number(product.buyPrice) || 0;
-            } else {
-                 // Satış faturasıysa normal satış fiyatını getir
-                 priceToUse = Number(product.price);
-            }
-            
-            updatedItem.price = priceToUse
-            updatedItem.vatRate = product.vatRate || 20
-        }
+            // Decimal tipinden Number'a güvenli dönüşüm (Eğer edit sayfasından number geliyorsa sorun yok)
+            const buyPriceVal = typeof product.buyPrice === 'object' ? Number(product.buyPrice) : product.buyPrice
+            const priceVal = typeof product.price === 'object' ? Number(product.price) : product.price
 
-        newItems[index] = updatedItem
+            if (type === 'PURCHASE') priceToUse = Number(buyPriceVal) || 0 
+            else priceToUse = Number(priceVal) || 0
+            
+            newItems[index] = { 
+                ...newItems[index], 
+                productId, 
+                price: priceToUse, 
+                vatRate: product.vatRate || 20 
+            }
+        }
         return newItems
     })
   }
 
-  // --- 4. SATIR GÜNCELLEME ---
   const updateItem = (index: number, field: keyof InvoiceItem, value: string | number) => {
-    setItems(prevItems => {
-        const newItems = [...prevItems]
+    setItems((prev) => {
+        const newItems = [...prev]
         newItems[index] = {
             ...newItems[index],
             [field]: value
@@ -154,33 +188,54 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
     })
   }
 
-  // --- 5. SATIR EKLE / SİL ---
-  const addItem = () => setItems([...items, { productId: "", quantity: 1, price: 0, vatRate: 20 }])
-  
-  const removeItem = (index: number) => {
-    setItems(prevItems => prevItems.filter((_, i) => i !== index))
+  const updatePayment = (index: number, field: keyof Payment, value: string | number) => {
+      setPayments((prev) => {
+          const newPayments = [...prev]
+          newPayments[index] = {
+              ...newPayments[index],
+              [field]: value
+          }
+          return newPayments
+      })
   }
 
+  // --- RENDER ---
   return (
     <form action={handleSubmit} className="space-y-6">
       
-      {/* BAŞLIK KARTI */}
+      {/* BAŞLIK & CARİ SEÇİMİ */}
       <Card className={`border-t-4 ${type === 'PURCHASE' ? 'border-t-red-500' : 'border-t-blue-500'}`}>
-        <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>{type === 'PURCHASE' ? 'Alış Faturası' : 'Satış Faturası'}</CardTitle>
+            <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={handleClearPayments} className="text-red-600">
+                    Ödenmedi / Sıfırla
+                </Button>
+                <Button type="button" variant="default" size="sm" onClick={handleMarkAsPaid} className="bg-emerald-600 hover:bg-emerald-700">
+                    Tamamı Ödendi
+                </Button>
+            </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-                <label className="text-sm font-medium text-slate-500">
-                    {type === 'PURCHASE' ? 'Tedarikçi Seçimi' : 'Müşteri Seçimi'}
-                </label>
-                <select name="customerId" defaultValue={initialData?.customerId || ""} className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" required>
+                <label className="text-sm font-medium text-slate-500">Cari Hesap</label>
+                <select 
+                    name="customerId" 
+                    defaultValue={initialData?.customerId} 
+                    className="flex h-10 w-full rounded-md border border-input px-3 bg-background" 
+                    required
+                >
                     <option value="">Seçiniz...</option>
-                    {customers.map(c => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
             </div>
             <div>
-                <label className="text-sm font-medium text-slate-500">Fatura Tarihi</label>
-                <Input name="date" type="date" defaultValue={initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} />
+                <label className="text-sm font-medium text-slate-500">Tarih</label>
+                <Input 
+                    name="date" 
+                    type="date" 
+                    defaultValue={initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} 
+                />
             </div>
         </CardContent>
       </Card>
@@ -191,92 +246,120 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
             <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-500 border-b">
                     <tr>
-                        <th className="p-3 pl-6">Ürün / Hizmet</th>
+                        <th className="p-3 pl-6">Ürün</th>
                         <th className="p-3 w-24">Miktar</th>
                         <th className="p-3 w-32">Birim Fiyat</th>
-                        <th className="p-3 w-20">KDV %</th>
-                        <th className="p-3 w-32 text-right">Toplam</th>
+                        <th className="p-3 w-20">KDV</th>
                         <th className="p-3 w-10"></th>
                     </tr>
                 </thead>
                 <tbody className="divide-y">
-                    {items.map((item, index) => {
-                        const lineTotal = (Number(item.price) * Number(item.quantity)) * (1 + (Number(item.vatRate)/100))
-                        
-                        return (
-                            <tr key={index}>
-                                <td className="p-3 pl-6">
-                                    <select 
-                                        value={item.productId}
-                                        onChange={(e) => handleProductChange(index, e.target.value)}
-                                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                                        required
-                                    >
-                                        <option value="">Ürün Seç...</option>
-                                        {products.map(p => (
-                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                        ))}
-                                    </select>
-                                </td>
-                                <td className="p-3">
-                                    <Input 
-                                        type="number" 
-                                        min="1" 
-                                        value={item.quantity} 
-                                        onChange={(e) => updateItem(index, 'quantity', e.target.value)} 
-                                    />
-                                </td>
-                                <td className="p-3">
-                                    <Input 
-                                        type="number" 
-                                        step="0.01" 
-                                        value={item.price} 
-                                        onChange={(e) => updateItem(index, 'price', e.target.value)} 
-                                        placeholder="0.00"
-                                    />
-                                </td>
-                                <td className="p-3">
-                                    <Input 
-                                        type="number" 
-                                        value={item.vatRate} 
-                                        onChange={(e) => updateItem(index, 'vatRate', e.target.value)} 
-                                    />
-                                </td>
-                                <td className="p-3 text-right font-medium">
-                                    {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(lineTotal)}
-                                </td>
-                                <td className="p-3">
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => removeItem(index)} className="text-red-500 hover:text-red-700">
-                                        <Trash2 size={16} />
-                                    </Button>
-                                </td>
-                            </tr>
-                        )
-                    })}
+                    {items.map((item, index) => (
+                        <tr key={index}>
+                            <td className="p-3 pl-6">
+                                <select 
+                                    value={item.productId}
+                                    onChange={(e) => handleProductChange(index, e.target.value)}
+                                    className="flex h-9 w-full rounded-md border bg-transparent px-3"
+                                    required
+                                >
+                                    <option value="">Seç...</option>
+                                    {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </td>
+                            <td className="p-3"><Input type="number" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} /></td>
+                            <td className="p-3"><Input type="number" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} /></td>
+                            <td className="p-3"><Input type="number" value={item.vatRate} onChange={(e) => updateItem(index, 'vatRate', e.target.value)} /></td>
+                            <td className="p-3">
+                                <Button type="button" variant="ghost" onClick={() => setItems(items.filter((_, i) => i !== index))}>
+                                    <Trash2 size={16}/>
+                                </Button>
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
-            
-            <div className="p-4 bg-slate-50 flex justify-between items-center border-t">
-                <Button type="button" variant="outline" onClick={addItem} className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                    <Plus size={16} className="mr-2" /> Yeni Satır
+            <div className="p-4 bg-slate-50 border-t">
+                <Button type="button" variant="outline" onClick={() => setItems([...items, { productId: "", quantity: 1, price: 0, vatRate: 20 }])}>
+                    <Plus size={16}/> Yeni Satır
                 </Button>
-                
-                <div className="text-right">
-                    <span className="text-slate-500 text-sm mr-4">Genel Toplam (KDV Dahil):</span>
-                    <span className="text-2xl font-bold text-slate-800">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(calculateTotal())}
-                    </span>
-                </div>
             </div>
         </CardContent>
       </Card>
 
-      <div className="flex justify-end">
-          <Button type="submit" size="lg" className={`w-full md:w-auto ${type === 'PURCHASE' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}>
-              {isEditMode ? 'Faturayı Güncelle' : (type === 'PURCHASE' ? 'Alış Faturasını Kaydet' : 'Satış Faturasını Onayla')}
-          </Button>
+      {/* --- ÖDEME VE BAKİYE BÖLÜMÜ --- */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          {/* Sol Taraf: Ödeme Geçmişi */}
+          <Card className="md:col-span-2">
+              <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                      <Wallet className="h-4 w-4 text-slate-500"/> Tahsilat / Ödeme Hareketleri
+                  </CardTitle>
+              </CardHeader>
+              <CardContent>
+                  <div className="space-y-3">
+                      {payments.map((p, idx) => (
+                          <div key={idx} className="flex gap-2 items-end border-b pb-2 last:border-0">
+                              <div className="flex-1">
+                                  <label className="text-xs text-slate-400">Tarih</label>
+                                  <Input 
+                                    type="date" 
+                                    value={p.date} 
+                                    onChange={(e) => updatePayment(idx, 'date', e.target.value)} 
+                                    className="h-8"
+                                  />
+                              </div>
+                              <div className="flex-1">
+                                  <label className="text-xs text-slate-400">Tutar</label>
+                                  <Input 
+                                    type="number" 
+                                    value={p.amount} 
+                                    onChange={(e) => updatePayment(idx, 'amount', e.target.value)} 
+                                    className="h-8 font-bold"
+                                  />
+                              </div>
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setPayments(payments.filter((_, i) => i !== idx))} className="h-8 w-8 text-red-500">
+                                  <Trash2 size={14}/>
+                              </Button>
+                          </div>
+                      ))}
+                      
+                      <Button type="button" variant="outline" size="sm" className="w-full border-dashed" 
+                          onClick={() => setPayments([...payments, { amount: 0, date: new Date().toISOString().split('T')[0], note: "" }])}>
+                          <Plus size={14} className="mr-2"/> Ödeme Ekle
+                      </Button>
+                  </div>
+              </CardContent>
+          </Card>
+
+          {/* Sağ Taraf: Bakiye Özeti */}
+          <Card className="bg-slate-50 border-slate-200">
+              <CardContent className="p-6 space-y-4">
+                  <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Genel Tutar</span>
+                      <span className="font-bold text-lg">{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(totalAmount)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm text-emerald-600">
+                      <span>Ödenen Tutar</span>
+                      <span className="font-bold">(-) {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(paidAmount)}</span>
+                  </div>
+                  <div className="h-px bg-slate-300 my-2"></div>
+                  <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-700">KALAN TUTAR</span>
+                      <span className={`text-2xl font-black ${remainingAmount > 0 ? 'text-red-600' : 'text-slate-400'}`}>
+                          {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(remainingAmount)}
+                      </span>
+                  </div>
+              </CardContent>
+          </Card>
       </div>
 
+      <div className="flex justify-end pt-4">
+          <Button type="submit" size="lg" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
+              {initialData ? 'Değişiklikleri Kaydet' : 'Faturayı Oluştur'}
+          </Button>
+      </div>
     </form>
   )
 }

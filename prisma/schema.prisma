@@ -102,6 +102,8 @@ model Invoice {
   type       InvoiceType @default(SALES)
   documentNumber String?
   items      InvoiceItem[]
+
+  payments Payment[]
 }
 
 // 6. FATURA KALEMLERİ
@@ -212,4 +214,13 @@ enum LogType {
 enum InvoiceType {
   SALES      // Satış Faturası
   PURCHASE   // Alış Faturası
+}
+
+model Payment {
+  id        String   @id @default(cuid())
+  amount    Decimal
+  date      DateTime @default(now())
+  note      String?
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }

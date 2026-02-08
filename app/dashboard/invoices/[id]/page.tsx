@@ -3,12 +3,15 @@ import { prisma } from "@/lib/db";
 import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { ArrowLeft, Edit } from "lucide-react";
+
+// Bileşen Importları
 import PrintButton from "./print-button";
-import StatusButtons from "./status-button";
+import StatusButton from "./status-button"; // İsim düzeltildi
 import DeleteButton from "./delete-button";
-// 👇 PDF Butonunu ekliyoruz (Eğer dosyanın adı farklıysa düzelt)
 import DownloadButton from "./download-button";
-import SendMailButton from "./send-mail-button"
+import SendMailButton from "./send-mail-button";
+import { PaymentDetailButton } from "./payment-detail-button";
 
 // Yazdırma Stili
 const printStyles = `
@@ -22,6 +25,7 @@ const printStyles = `
       box-shadow: none; border: none;
     }
     @page { size: auto; margin: 0mm; }
+    .no-print { display: none !important; }
   }
 `;
 
@@ -40,6 +44,7 @@ export default async function InvoiceDetailPage({
     include: { tenant: true },
   });
 
+  // 1. Faturayı, Müşteriyi, Kalemleri ve ÖDEMELERİ Çek
   const invoice = await prisma.invoice.findUnique({
     where: {
       id: id,
@@ -50,28 +55,15 @@ export default async function InvoiceDetailPage({
       items: {
         include: { product: true },
       },
+      payments: {
+        orderBy: { date: 'desc' }
+      }
     },
   });
 
   if (!invoice) notFound();
 
-  // --- 🛠️ DÜZELTME: Decimal Verileri Number'a Çeviriyoruz ---
-  // Bu işlem "Decimal objects are not supported" hatasını çözer.
-  const serializedInvoice = {
-    ...invoice,
-    // Fiyatları sayıya çevir
-    items: invoice.items.map((item) => ({
-      ...item,
-      price: Number(item.price),
-      product: {
-        ...item.product,
-        price: Number(item.product.price),
-        buyPrice: Number(item.product.buyPrice),
-      },
-    })),
-  };
-
-  // --- HESAPLAMALAR ---
+  // 2. HESAPLAMALAR
   const subTotal = invoice.items.reduce((acc, item) => {
     return acc + Number(item.price) * item.quantity;
   }, 0);
@@ -84,6 +76,32 @@ export default async function InvoiceDetailPage({
 
   const grandTotal = subTotal + totalTaxAmount;
 
+  // 3. VERİ DÖNÜŞTÜRME (Serialization)
+  const serializedInvoice = {
+    ...invoice,
+    items: invoice.items.map((item) => ({
+      ...item,
+      price: Number(item.price),
+      product: {
+        ...item.product,
+        price: Number(item.product.price),
+        buyPrice: Number(item.product.buyPrice),
+      },
+    })),
+    payments: invoice.payments.map(p => ({
+      ...p,
+      amount: Number(p.amount),
+    })),
+  };
+
+  const serializedPayments = invoice.payments.map(p => ({
+    id: p.id,
+    amount: Number(p.amount),
+    date: p.date,
+    note: p.note
+  }));
+
+  // Para Formatı Yardımcısı
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("tr-TR", {
       style: "currency",
@@ -95,27 +113,43 @@ export default async function InvoiceDetailPage({
     <div className="p-4 md:p-8 bg-slate-100 min-h-screen flex flex-col items-center gap-6">
       <style>{printStyles}</style>
 
-      {/* ÜST BUTONLAR */}
+      {/* ÜST BUTONLAR (TOOLBAR) */}
       <div className="w-full max-w-4xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
-        <Link href="/dashboard/invoices">
-          <Button variant="outline">← Listeye Dön</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+            <Link href="/dashboard/invoices">
+                <Button variant="outline" size="sm" className="gap-2">
+                    <ArrowLeft className="h-4 w-4" /> Listeye Dön
+                </Button>
+            </Link>
+        </div>
 
-        <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-          {/* 👇 Çevrilmiş (serialized) veriyi gönderiyoruz */}
-          <DownloadButton invoice={serializedInvoice} tenant={user?.tenant} />
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          {/* Ödeme Detayı Butonu */}
+          <PaymentDetailButton 
+            invoiceId={invoice.id} 
+            totalAmount={grandTotal} 
+            payments={serializedPayments} 
+          />
+          
           <SendMailButton invoiceId={invoice.id} />
-          <StatusButtons id={invoice.id} currentStatus={invoice.status} />
+          
+          <DownloadButton invoice={serializedInvoice} tenant={user?.tenant} />
+          
           <PrintButton />
-          <DeleteButton invoiceId={invoice.id} />
+          
+          {/* 👇 HATA BURADAYDI, DÜZELTİLDİ: status -> currentStatus */}
+          <StatusButton id={invoice.id} currentStatus={invoice.status} />
+          
           <Link href={`/dashboard/invoices/${invoice.id}/edit`}>
             <Button
               variant="outline"
-              className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200"
+              className="bg-yellow-50 text-yellow-700 hover:bg-yellow-100 border-yellow-200 gap-2"
             >
-              ✏️ Düzenle
+              <Edit className="h-4 w-4" /> Düzenle
             </Button>
           </Link>
+
+          <DeleteButton invoiceId={invoice.id} />
         </div>
       </div>
 

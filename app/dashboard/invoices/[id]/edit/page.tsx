@@ -24,7 +24,10 @@ export default async function EditInvoicePage({
         id: id,
         tenantId: user?.tenantId 
       },
-      include: { items: true }, // Kalemleri de çekiyoruz
+      include: { 
+        items: true,      // Kalemleri çek
+        payments: true    // Ödemeleri çek
+      }, 
     }),
     prisma.customer.findMany({
       where: { tenantId: user?.tenantId },
@@ -38,24 +41,33 @@ export default async function EditInvoicePage({
 
   if (!invoice) notFound();
 
-  // 🛠️ Decimal verileri Number'a çeviriyoruz (Form'a gönderirken hata almamak için)
-  // InvoiceForm bileşeni "number" bekliyor, Prisma "Decimal" veriyor.
+  // 🛠️ DÖNÜŞTÜRME İŞLEMİ (Serialization)
+  // Veritabanı formatını -> Form formatına çeviriyoruz.
   const serializedInvoice = {
     id: invoice.id,
     customerId: invoice.customerId,
-    date: invoice.date,
+    date: invoice.date, // Form hem Date hem string kabul ediyor, bu kalabilir.
+    type: invoice.type, 
     items: invoice.items.map((item) => ({
       productId: item.productId,
       quantity: item.quantity,
-      price: Number(item.price), // Decimal -> Number çevrimi
+      price: Number(item.price), // Decimal -> Number
       vatRate: item.vatRate,
+    })),
+    // 🔴 HATA BURADAYDI, ŞİMDİ DÜZELTİLDİ:
+    payments: invoice.payments.map((p) => ({
+      amount: Number(p.amount),   // Decimal -> Number
+      date: p.date.toISOString(), // Date -> String (ISO format)
+      note: p.note || ""          // null -> Boş String ("")
     })),
   };
 
+  // Ürünleri de serialize ediyoruz
   const serializedProducts = products.map(p => ({
     ...p,
     price: Number(p.price),
-    buyPrice: Number(p.buyPrice)
+    buyPrice: Number(p.buyPrice),
+    stock: p.stock // stock alanını da ekledik
   }));
 
   return (
@@ -65,7 +77,6 @@ export default async function EditInvoicePage({
         <span className="text-sm text-slate-500">#{invoice.number}</span>
       </div>
 
-      {/* initialData gönderiyoruz, böylece form "Düzenleme Modu"nda açılacak */}
       <InvoiceForm 
         customers={customers} 
         products={serializedProducts} 
