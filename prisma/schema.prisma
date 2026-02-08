@@ -82,6 +82,8 @@ model Product {
   logs         InventoryLog[] 
 
   buyPrice    Decimal  @default(0) // Alış Fiyatı (Yeni)  
+
+  unit      String   @default("Adet") 
 }
 
 // 5. FATURALAR
@@ -105,6 +107,9 @@ model Invoice {
   items      InvoiceItem[]
 
   payments Payment[]
+
+  currency      String   @default("TRY") // TRY, USD, EUR, GBP
+  exchangeRate  Decimal  @default(0)   // Kur (Örn: 32.50)
 }
 
 // 6. FATURA KALEMLERİ
@@ -119,6 +124,11 @@ model InvoiceItem {
 
   productId String
   product   Product @relation(fields: [productId], references: [id])
+
+  unit      String?   @default("Adet") // 👈 YENİ: Fatura kesildiği andaki birim (Snapshot)
+
+  purchasePrice Decimal? @default(0) // O anki alış maliyeti
+  profit        Decimal? @default(0) // Eklenen kâr tutarı
 }
 
 // 7. AI ANALİZ RAPORLARI
@@ -179,13 +189,7 @@ enum Role {
   USER
 }
 
-//enum ExpenseCategory {
-//  RENT
-//  FOOD
-//  TRANSPORT
-//  MARKETING
-//  OTHER
-//}
+
 
 // 👇 YENİ TABLO: STOK GEÇMİŞİ
 model InventoryLog {

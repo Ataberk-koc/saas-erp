@@ -79,9 +79,12 @@ export default async function InvoiceDetailPage({
   // 3. VERİ DÖNÜŞTÜRME (Serialization)
   const serializedInvoice = {
     ...invoice,
+    exchangeRate: Number(invoice.exchangeRate),
     items: invoice.items.map((item) => ({
       ...item,
       price: Number(item.price),
+      purchasePrice: Number(item.purchasePrice),
+      profit: Number(item.profit),
       product: {
         ...item.product,
         price: Number(item.product.price),
@@ -128,7 +131,9 @@ export default async function InvoiceDetailPage({
           <PaymentDetailButton 
             invoiceId={invoice.id} 
             totalAmount={grandTotal} 
-            payments={serializedPayments} 
+            payments={serializedPayments}
+            currency={invoice.currency}
+            exchangeRate={Number(invoice.exchangeRate)}
           />
           
           <SendMailButton invoiceId={invoice.id} />

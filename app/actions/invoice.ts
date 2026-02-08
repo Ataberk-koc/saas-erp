@@ -11,6 +11,9 @@ interface InvoiceItemInput {
   quantity: number
   price: number
   vatRate: number
+  unit?: string
+  purchasePrice?: number 
+  profit?: number        
 }
 
 interface PaymentInput {
@@ -63,12 +66,17 @@ export async function createInvoice(
         type,
         tenantId: user.tenantId,
         customerId,
+        currency: formData.get("currency") as string || "TRY",        
+        exchangeRate: Number(formData.get("exchangeRate")) || 1,   
         items: {
           create: items.map((item) => ({
              productId: item.productId,
              quantity: item.quantity,
              price: item.price,
-             vatRate: item.vatRate
+             vatRate: item.vatRate,
+             unit: item.unit || "Adet",
+             purchasePrice: item.purchasePrice || 0, 
+             profit: item.profit || 0
           }))
         },
         payments: {

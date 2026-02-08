@@ -4,6 +4,8 @@ import { useState } from "react"
 import { updateProduct } from "@/app/actions/product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
@@ -15,6 +17,7 @@ interface EditProductFormProps {
     price: number | string
     stock: number
     vatRate: number
+    unit?: string
   }
 }
 
@@ -26,9 +29,10 @@ export function EditProductForm({ product }: EditProductFormProps) {
     setLoading(true)
 
     const formData = new FormData(event.currentTarget)
+    formData.set("id", product.id)
     
     // Server Action çağırıyoruz
-    const result = await updateProduct(product.id, formData) as { error?: string }
+    const result = await updateProduct(formData) as { error?: string }
 
     if (result?.error) {
       toast.error(result.error)
@@ -62,6 +66,24 @@ export function EditProductForm({ product }: EditProductFormProps) {
           <label className="text-sm font-medium">Stok</label>
           <Input name="stock" type="number" defaultValue={product.stock} required />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="unit">Birim</Label>
+        <Select name="unit" defaultValue={product.unit || "Adet"}>
+          <SelectTrigger>
+            <SelectValue placeholder="Birim Seç" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Adet">Adet</SelectItem>
+            <SelectItem value="Metre">Metre</SelectItem>
+            <SelectItem value="Kg">Kilogram (Kg)</SelectItem>
+            <SelectItem value="Lt">Litre (Lt)</SelectItem>
+            <SelectItem value="Koli">Koli</SelectItem>
+            <SelectItem value="Saat">Saat (Hizmet)</SelectItem>
+            <SelectItem value="Gün">Gün (Hizmet)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid w-full gap-2">

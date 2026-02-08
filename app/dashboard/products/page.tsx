@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { addProduct } from "@/app/actions/product";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import Link from "next/link";
@@ -91,6 +93,22 @@ export default async function ProductsPage({
               <Input name="stock" type="number" defaultValue="100" required />
             </div>
 
+            <div className="grid gap-2">
+              <Label htmlFor="unit">Birim</Label>
+              <Select name="unit" defaultValue="Adet">
+                <SelectTrigger>
+                  <SelectValue placeholder="Birim Seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Adet">Adet</SelectItem>
+                  <SelectItem value="Metre">Metre</SelectItem>
+                  <SelectItem value="Kg">Kg</SelectItem>
+                  <SelectItem value="Lt">Litre</SelectItem>
+                  <SelectItem value="Koli">Koli</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid w-full gap-2">
               <label className="text-sm font-medium">KDV Oranı (%)</label>
               <select
@@ -130,6 +148,7 @@ export default async function ProductsPage({
                   <th className="p-4 font-medium whitespace-nowrap">Ürün Adı</th>
                   <th className="p-4 font-medium whitespace-nowrap">Fiyat</th>
                   <th className="p-4 font-medium whitespace-nowrap">KDV</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Birim</th>
                   <th className="p-4 font-medium whitespace-nowrap">Stok</th>
                   <th className="p-4 font-medium text-right whitespace-nowrap">İşlemler</th>
                 </tr>
@@ -137,7 +156,7 @@ export default async function ProductsPage({
               <tbody>
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-4 text-center text-slate-500">
+                    <td colSpan={6} className="p-4 text-center text-slate-500">
                       {query
                         ? `"${query}" ile eşleşen ürün bulunamadı.`
                         : "Henüz ürün eklenmemiş."}
@@ -159,6 +178,11 @@ export default async function ProductsPage({
                         %{product.vatRate}{" "}
                       </td>
                       <td className="p-4 whitespace-nowrap">
+                        <span className="px-2 py-1 rounded text-xs font-bold bg-blue-100 text-blue-700">
+                          {product.unit || "Adet"}
+                        </span>
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
                         <span
                           className={`px-2 py-1 rounded text-xs font-bold ${
                             product.stock > 0
@@ -166,7 +190,7 @@ export default async function ProductsPage({
                               : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {product.stock} Adet
+                          {product.stock} {product.unit || "Adet"}
                         </span>
                       </td>
                       

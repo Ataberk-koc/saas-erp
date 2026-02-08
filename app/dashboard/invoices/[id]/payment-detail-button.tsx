@@ -25,9 +25,11 @@ interface Props {
   invoiceId: string
   totalAmount: number
   payments: Payment[]
+  currency: string
+  exchangeRate: number
 }
 
-export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props) {
+export function PaymentDetailButton({ invoiceId, totalAmount, payments, currency, exchangeRate }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   
@@ -37,17 +39,28 @@ export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props)
   const [note, setNote] = useState("")
   const [loading, setLoading] = useState(false)
 
-  // Hesaplamalar
+  // Döviz gösterimi: TL tutarını fatura para birimine çevir
+  const curr = currency || 'TRY'
+  const rate = exchangeRate || 1
+  const toDisplay = (amountTL: number) => curr === 'TRY' ? amountTL : amountTL / rate
+
+  // Hesaplamalar (TL bazında)
   const paidAmount = payments.reduce((acc, p) => acc + Number(p.amount), 0)
   const remainingAmount = totalAmount - paidAmount
-  const isPaid = remainingAmount <= 0.1 // Ufak kuruş farklarını yoksay
+  const isPaid = remainingAmount <= 0.1
+
+  const formatMoney = (val: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: curr }).format(val)
 
   // 1. Yeni Ödeme Ekle
   const handleAddPayment = async () => {
     if (!amount || Number(amount) <= 0) return toast.error("Geçerli bir tutar giriniz.")
     
+    // Kullanıcı fatura para biriminde girer, TL'ye çevirip sunucuya gönder
+    const amountInCurrency = Number(amount)
+    const amountTL = curr === 'TRY' ? amountInCurrency : amountInCurrency * rate
+    
     setLoading(true)
-    const res = await addPayment(invoiceId, Number(amount), date, note)
+    const res = await addPayment(invoiceId, amountTL, date, note)
     setLoading(false)
 
     if (res.success) {
@@ -73,6 +86,7 @@ export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props)
   // 3. Kalanı Tamamla
   const handleComplete = async () => {
     if (remainingAmount <= 0) return
+    // remainingAmount zaten TL bazında, direkt gönder
     const res = await completePayment(invoiceId, remainingAmount)
     if (res.success) {
       toast.success("Tahsilat tamamlandı!")
@@ -93,6 +107,11 @@ export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props)
   }
 
   const formatCurrency = (val: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val)
+  // Tüm gösterimlerde fatura para birimini kullan
+  const displayTotal = toDisplay(totalAmount)
+  const displayPaid = toDisplay(paidAmount)
+  const displayRemaining = Math.max(0, toDisplay(remainingAmount))
+  const overpayment = remainingAmount < -0.1 ? toDisplay(Math.abs(remainingAmount)) : 0
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -115,15 +134,16 @@ export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props)
           <div className="grid grid-cols-3 gap-2 mt-3 text-center">
             <div className="bg-white p-2 rounded border">
                 <div className="text-[10px] text-slate-500 uppercase">Toplam</div>
-                <div className="font-bold text-sm">{formatCurrency(totalAmount)}</div>
+                <div className="font-bold text-sm">{formatMoney(displayTotal)}</div>
             </div>
             <div className="p-2 rounded border border-emerald-100 bg-emerald-50/50">
                 <div className="text-[10px] text-emerald-600 uppercase">Ödenen</div>
-                <div className="font-bold text-sm text-emerald-700">{formatCurrency(paidAmount)}</div>
+                <div className="font-bold text-sm text-emerald-700">{formatMoney(displayPaid)}</div>
             </div>
-            <div className="p-2 rounded border border-red-100 bg-red-50/50">
-                <div className="text-[10px] text-red-600 uppercase">Kalan</div>
-                <div className="font-bold text-sm text-red-700">{formatCurrency(remainingAmount)}</div>
+            <div className={`p-2 rounded border ${isPaid ? 'border-emerald-100 bg-emerald-50/50' : 'border-red-100 bg-red-50/50'}`}>
+                <div className={`text-[10px] uppercase ${isPaid ? 'text-emerald-600' : 'text-red-600'}`}>Kalan</div>
+                <div className={`font-bold text-sm ${isPaid ? 'text-emerald-700' : 'text-red-700'}`}>{formatMoney(displayRemaining)}</div>
+                {overpayment > 0 && <div className="text-[9px] text-amber-600 mt-0.5">+{formatMoney(overpayment)} fazla</div>}
             </div>
           </div>
         </div>
@@ -184,7 +204,7 @@ export function PaymentDetailButton({ invoiceId, totalAmount, payments }: Props)
                                 </div>
                                 <div>
                                     <div className="font-bold text-slate-700">
-                                        {formatCurrency(Number(p.amount))}
+                                        {formatMoney(toDisplay(Number(p.amount)))}
                                     </div>
                                     <div className="text-xs text-slate-500 flex items-center gap-1">
                                         <Calendar className="h-3 w-3"/>
