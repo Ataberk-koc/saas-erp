@@ -69,6 +69,7 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
             label="Ürünler"
             onClick={() => setIsOpen(false)}
           />
+          
 
           <SidebarLink
             href="/dashboard/invoices"
