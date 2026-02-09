@@ -12,11 +12,14 @@ const PurchaseSchema = z.object({
   documentNumber: z.string().optional(), // Tedarikçinin kestiği fatura no
   gcbNo: z.string().optional(), // Gümrük Çıkış Beyannamesi Numarası
   date: z.date(),
+  currency: z.string().default("TRY"),
+  exchangeRate: z.number().default(1),
   items: z.array(z.object({
     productName: z.string().min(1, "Ürün adı giriniz"),
     quantity: z.number().min(1),
     price: z.number().min(0), // Alış Fiyatı
-    vatRate: z.number().default(20)
+    vatRate: z.number().default(20),
+    unit: z.string().default("Adet")
   }))
 })
 
@@ -27,7 +30,7 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
   const validated = PurchaseSchema.safeParse(data)
   if (!validated.success) return { error: "Form verileri geçersiz" }
 
-  const { supplierId, documentNumber, gcbNo, date, items } = validated.data
+  const { supplierId, documentNumber, gcbNo, date, currency, exchangeRate, items } = validated.data
 
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -51,6 +54,8 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
           date: date,
           dueDate: date,
           status: "PAID",         // Alışlar genelde peşin/ödendi girilir
+          currency: currency,     // 👈 Döviz birimi
+          exchangeRate: exchangeRate, // 👈 Kur
         }
       })
 
@@ -82,8 +87,10 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
               tenantId: session.user.tenantId,
               name: item.productName,
               stock: item.quantity,      // İlk stok
-              price: item.price * (1 + item.vatRate / 100),   // KDV dahil fiyat (ör: 10000 * 1.20 = 12000)
-              vatRate: item.vatRate
+              price: item.price,        // Birim fiyat (KDV hariç)
+              buyPrice: item.price,     // Alış fiyatı
+              vatRate: item.vatRate,
+              unit: item.unit           // Birim (Adet, Kg, Metre...)
             }
           })
           productId = newProduct.id
@@ -96,7 +103,8 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
             productId: productId,
             quantity: item.quantity,
             price: item.price,
-            vatRate: item.vatRate
+            vatRate: item.vatRate,
+            unit: item.unit
           }
         })
 

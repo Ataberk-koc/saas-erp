@@ -6,7 +6,8 @@ import { createPurchaseInvoice } from "@/app/actions/purchase"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2, Plus, Save, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 
@@ -23,6 +24,7 @@ interface InvoiceItem {
   quantity: number | string // Input'tan string gelebilir
   price: number | string
   vatRate: number | string
+  unit: string
 }
 
 export default function PurchaseForm({ customers }: { customers: Customer[] }) {
@@ -36,13 +38,17 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
   const [gcbNo, setGcbNo] = useState("")
   const [date, setDate] = useState(new Date().toISOString().split("T")[0])
   
+  // --- Döviz State'leri ---
+  const [currency, setCurrency] = useState("TRY")
+  const [exchangeRate, setExchangeRate] = useState<string>("1")
+
   const [items, setItems] = useState<InvoiceItem[]>([
-    { productName: "", quantity: 1, price: 0, vatRate: 20 }
+    { productName: "", quantity: 1, price: 0, vatRate: 20, unit: "Adet" }
   ])
 
   // --- Fonksiyonlar ---
   const addItem = () => {
-    setItems([...items, { productName: "", quantity: 1, price: 0, vatRate: 20 }])
+    setItems([...items, { productName: "", quantity: 1, price: 0, vatRate: 20, unit: "Adet" }])
   }
 
   const removeItem = (index: number) => {
@@ -66,10 +72,24 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
     setItems(newItems)
   }
 
-  const calculateTotal = () => {
+  // --- Döviz Fonksiyonları ---
+  const numRate = parseFloat(exchangeRate.replace(',', '.')) || 1
+
+  const handleCurrencyChange = (val: string) => {
+    setCurrency(val)
+    if (val === "TRY") setExchangeRate("1")
+  }
+
+  const calculateTotalTL = () => {
     return items.reduce((acc, item) => {
       return acc + (Number(item.quantity) * Number(item.price) * (1 + Number(item.vatRate) / 100))
     }, 0)
+  }
+
+  // Döviz gösterim: TL tutarı kura böl
+  const displayAmount = (amountTL: number) => {
+    if (currency === 'TRY') return amountTL
+    return amountTL / numRate
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -88,11 +108,14 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
       documentNumber,
       gcbNo,
       date: new Date(date),
+      currency,
+      exchangeRate: parseFloat(exchangeRate.replace(',', '.')) || 1,
       items: items.map(item => ({
         ...item,
         quantity: Number(item.quantity),
         price: Number(item.price),
-        vatRate: Number(item.vatRate)
+        vatRate: Number(item.vatRate),
+        unit: item.unit || "Adet"
       }))
     }
 
@@ -171,6 +194,40 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
             </div>
           </div>
 
+          {/* DÖVİZ SEÇİMİ */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label>Para Birimi</Label>
+              <Select value={currency} onValueChange={handleCurrencyChange}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TRY">Türk Lirası (₺)</SelectItem>
+                  <SelectItem value="USD">Dolar ($)</SelectItem>
+                  <SelectItem value="EUR">Euro (€)</SelectItem>
+                  <SelectItem value="GBP">Sterlin (£)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex justify-between">
+                Kur
+                {currency !== "TRY" && <span className="text-xs text-gray-400 font-normal">Manuel Giriniz</span>}
+              </Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={exchangeRate}
+                onChange={(e) => setExchangeRate(e.target.value)}
+                disabled={currency === "TRY"}
+                className="font-bold"
+                placeholder="Örn: 32.50"
+              />
+              {currency !== "TRY" && (
+                <p className="text-[10px] text-gray-400">1 {currency} = {numRate} TL olarak kaydedilecek</p>
+              )}
+            </div>
+          </div>
+
           <div className="border-t border-dashed my-6"></div>
 
           {/* 2. ÜRÜNLER LİSTESİ */}
@@ -187,7 +244,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
             {items.map((item, index) => (
               <div key={index} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-4 border rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
                 
-                <div className="md:col-span-5 col-span-12 space-y-1">
+                <div className="md:col-span-3 col-span-12 space-y-1">
                   <Label className="text-xs text-gray-500">Ürün Adı</Label>
                   <Input 
                     placeholder="Örn: iPhone 15 Kılıf" 
@@ -201,7 +258,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
                   </span>
                 </div>
 
-                <div className="md:col-span-2 col-span-6 space-y-1">
+                <div className="md:col-span-2 col-span-3 space-y-1">
                   <Label className="text-xs text-gray-500">Miktar</Label>
                   <Input 
                     type="number" 
@@ -210,6 +267,21 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
                     onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
                     className="bg-white text-center"
                   />
+                </div>
+
+                <div className="md:col-span-2 col-span-3 space-y-1">
+                  <Label className="text-xs text-gray-500">Birim</Label>
+                  <select
+                    value={item.unit}
+                    onChange={(e) => handleItemChange(index, "unit", e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-white px-2 py-2 text-sm"
+                  >
+                    <option value="Adet">Adet</option>
+                    <option value="Kg">Kg</option>
+                    <option value="Metre">Metre</option>
+                    <option value="Lt">Litre</option>
+                    <option value="Koli">Koli</option>
+                  </select>
                 </div>
 
                 <div className="md:col-span-2 col-span-6 space-y-1">
@@ -259,8 +331,13 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
               <div className="text-right">
                 <p className="text-sm text-gray-500">Genel Toplam</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calculateTotal())}
+                  {new Intl.NumberFormat("tr-TR", { style: "currency", currency: currency }).format(displayAmount(calculateTotalTL()))}
                 </p>
+                {currency !== "TRY" && (
+                  <p className="text-xs text-gray-400">
+                    ≈ {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calculateTotalTL())}
+                  </p>
+                )}
               </div>
 
               <Button type="submit" size="lg" className="bg-blue-600 hover:bg-blue-700 gap-2 px-8" disabled={loading}>

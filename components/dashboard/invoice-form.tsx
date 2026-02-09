@@ -354,7 +354,17 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                             <td className="p-3">
                                 <div className="flex items-center gap-1">
                                     <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} className="w-16 h-9"/>
-                                    <span className="text-[10px] text-slate-400 truncate max-w-10" title={item.unit}>{item.unit || "Adet"}</span>
+                                    <select
+                                        value={item.unit || "Adet"}
+                                        onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                                        className="h-9 rounded-md border bg-transparent px-1 text-xs text-slate-500 w-16"
+                                    >
+                                        <option value="Adet">Adet</option>
+                                        <option value="Kg">Kg</option>
+                                        <option value="Metre">Metre</option>
+                                        <option value="Lt">Litre</option>
+                                        <option value="Koli">Koli</option>
+                                    </select>
                                 </div>
                             </td>
                             {type === 'SALES' && (
