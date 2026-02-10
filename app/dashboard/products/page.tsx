@@ -1,16 +1,13 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { addProduct } from "@/app/actions/product";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Search from "@/components/search";
 import Pagination from "@/components/pagination"; // 👈 YENİ: Sayfalama Bileşeni
 import { DeleteProductButton } from "@/components/dashboard/delete-product-button";
+import { AddProductForm } from "@/components/dashboard/add-product-form";
 
 const ITEMS_PER_PAGE = 10; // Her sayfada 10 ürün
 
@@ -54,109 +51,11 @@ export default async function ProductsPage({
     take: ITEMS_PER_PAGE,
   });
 
-  async function handleSave(formData: FormData) {
-    "use server";
-    await addProduct(formData);
-  }
-
   return (
     <div className="p-4 md:p-10 bg-slate-50 min-h-screen space-y-8">
       
       {/* --- Ekleme Formu --- */}
-      <Card>
-        <CardHeader>
-          <CardTitle>📦 Yeni Ürün / Hizmet Ekle</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form
-            action={handleSave}
-            className="flex flex-col md:flex-row gap-4 items-end"
-          >
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Ürün Adı</label>
-              <Input name="name" placeholder="Örn: Hosting Hizmeti" required />
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Fiyat (₺ TL)</label>
-              <Input
-                name="price"
-                type="text"
-                step="0.01"
-                placeholder="1000.00"
-                required
-              />
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Kur</label>
-              <Input
-                name="exchangeRate"
-                type="text"
-                step="0.01"
-                placeholder="1"
-                defaultValue="1"
-              />
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Stok</label>
-              <Input name="stock" type="number" defaultValue="100" required />
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="unit">Birim</Label>
-              <Select name="unit" defaultValue="Adet">
-                <SelectTrigger>
-                  <SelectValue placeholder="Birim Seç" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Adet">Adet</SelectItem>
-                  <SelectItem value="Metre">Metre</SelectItem>
-                  <SelectItem value="Kg">Kg</SelectItem>
-                  <SelectItem value="Lt">Litre</SelectItem>
-                  <SelectItem value="Koli">Koli</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">KDV Oranı (%)</label>
-              <select
-                name="vatRate"
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                defaultValue="20"
-              >
-                <option value="0">%0</option>
-                <option value="1">%1</option>
-                <option value="8">%8</option>
-                <option value="10">%10</option>
-                <option value="18">%18</option>
-                <option value="20">%20</option>
-              </select>
-            </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="currency">Para Birimi</Label>
-              <Select name="currency" defaultValue="TRY">
-                <SelectTrigger>
-                  <SelectValue placeholder="Para Birimi Seç" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="TRY">₺ TRY</SelectItem>
-                  <SelectItem value="USD">$ USD</SelectItem>
-                  <SelectItem value="EUR">€ EUR</SelectItem>
-                  <SelectItem value="GBP">£ GBP</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button type="submit" className="w-full md:w-auto">
-              Ekle
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+      <AddProductForm />
 
       {/* --- Liste Tablosu --- */}
       <Card>
@@ -201,6 +100,8 @@ export default async function ProductsPage({
                         {new Intl.NumberFormat("tr-TR", {
                           style: "currency",
                           currency: "TRY",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
                         }).format(Number(product.price))}
                       </td>
                       <td className="p-4 whitespace-nowrap">
@@ -223,6 +124,8 @@ export default async function ProductsPage({
                         {product.currency === "TRY" ? "-" : new Intl.NumberFormat("tr-TR", {
                           style: "currency",
                           currency: product.currency || "TRY",
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 2,
                         }).format(Number(product.price) / (Number(product.exchangeRate) || 1))}
                       </td>
                       <td className="p-4 text-slate-600 whitespace-nowrap">

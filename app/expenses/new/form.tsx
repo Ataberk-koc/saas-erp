@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2, Plus, Save, ArrowLeft } from "lucide-react"
 import Link from "next/link"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 // Tip Tanımları
 interface Customer {
@@ -286,12 +287,9 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
 
                 <div className="md:col-span-2 col-span-6 space-y-1">
                   <Label className="text-xs text-gray-500">Birim Alış Fiyatı</Label>
-                  <Input 
-                    type="number" 
-                    min="0"
-                    step="0.01"
+                  <CurrencyInput 
                     value={item.price}
-                    onChange={(e) => handleItemChange(index, "price", e.target.value)}
+                    onValueChange={(v) => handleItemChange(index, "price", v)}
                     className="bg-white text-right"
                   />
                 </div>
@@ -331,11 +329,11 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
               <div className="text-right">
                 <p className="text-sm text-gray-500">Genel Toplam</p>
                 <p className="text-2xl font-bold text-blue-600">
-                  {new Intl.NumberFormat("tr-TR", { style: "currency", currency: currency }).format(displayAmount(calculateTotalTL()))}
+                  {new Intl.NumberFormat("tr-TR", { style: "currency", currency: currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(displayAmount(calculateTotalTL()))}
                 </p>
                 {currency !== "TRY" && (
                   <p className="text-xs text-gray-400">
-                    ≈ {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(calculateTotalTL())}
+                    ≈ {new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(calculateTotalTL())}
                   </p>
                 )}
               </div>

@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 interface EditProductFormProps {
   product: {
@@ -56,10 +57,9 @@ export function EditProductForm({ product }: EditProductFormProps) {
       <div className="flex flex-col md:flex-row gap-4">
         <div className="grid w-full gap-2">
           <label className="text-sm font-medium">Fiyat (₺ TL)</label>
-          <Input 
+          <CurrencyInput 
             name="price" 
-            type="text" 
-            defaultValue={product.price.toString()} 
+            defaultValue={product.price} 
             required 
           />
         </div>

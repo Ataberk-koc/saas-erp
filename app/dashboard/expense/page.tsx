@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect } from "next/navigation"
 import { Plus } from "lucide-react"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 export default async function ExpensesPage() {
   const session = await auth()
@@ -91,7 +92,7 @@ export default async function ExpensesPage() {
                 
                 <div className="grid gap-2">
                     <label className="text-sm font-medium">Tutar (TL)</label>
-                    <Input name="amount" type="number" step="0.01" placeholder="0.00" required />
+                    <CurrencyInput name="amount" placeholder="0" required />
                 </div>
 
                 <div className="grid gap-2">
@@ -153,7 +154,7 @@ export default async function ExpensesPage() {
                                     {new Date(expense.date).toLocaleDateString("tr-TR")}
                                 </td>
                                 <td className="p-3 text-right font-bold text-red-600">
-                                    -{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(expense.amount))}
+                                    -{new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(Number(expense.amount))}
                                 </td>
                                 <td className="p-3 text-right">
                                     <form action={async () => {

@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Plus, Trash2, Wallet, Calculator, RefreshCcw, CheckCircle2 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
+import { CurrencyInput } from "@/components/ui/currency-input"
 
 // --- TİP TANIMLAMALARI ---
 interface Customer {
@@ -378,10 +379,9 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                                         />
                                     </td>
                                     <td className="p-3">
-                                        <Input 
-                                            type="number" 
+                                        <CurrencyInput 
                                             value={item.profit} 
-                                            onChange={(e) => updateItem(index, 'profit', e.target.value)} 
+                                            onValueChange={(v) => updateItem(index, 'profit', v)} 
                                             placeholder="0"
                                             className="text-right font-bold text-emerald-600 border-emerald-200 bg-emerald-50 focus:bg-white h-9"
                                         />
@@ -389,13 +389,13 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                                 </>
                             )}
                             <td className="p-3">
-                                <Input type="number" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} className="text-right font-bold h-9"/>
+                                <CurrencyInput value={item.price} onValueChange={(v) => updateItem(index, 'price', v)} className="text-right font-bold h-9"/>
                             </td>
                             <td className="p-3">
                                 <Input type="number" value={item.vatRate} onChange={(e) => updateItem(index, 'vatRate', e.target.value)} className="text-center h-9" />
                             </td>
                             <td className="p-3 text-right font-mono font-medium text-slate-700">
-                                {new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(rowTotal)} {currency === "TRY" ? "₺" : currency}
+                                {new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(rowTotal)} {currency === "TRY" ? "₺" : currency}
                             </td>
                             <td className="p-3 text-center">
                                 <Button type="button" variant="ghost" size="icon" onClick={() => setItems(items.filter((_, i) => i !== index))} className="h-8 w-8 text-slate-400 hover:text-red-500">
@@ -467,10 +467,9 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                                 </div>
                                 <div>
                                     <label className="text-xs text-emerald-600 font-semibold">Kâr (+/-)</label>
-                                    <Input 
-                                        type="number" 
+                                    <CurrencyInput 
                                         value={item.profit} 
-                                        onChange={(e) => updateItem(index, 'profit', e.target.value)} 
+                                        onValueChange={(v) => updateItem(index, 'profit', v)} 
                                         placeholder="0"
                                         className="font-bold text-emerald-600 border-emerald-200 bg-emerald-50 focus:bg-white h-9"
                                     />
@@ -480,12 +479,12 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                         <div className="grid grid-cols-2 gap-2">
                             <div>
                                 <label className="text-xs text-slate-500">Birim Fiyat</label>
-                                <Input type="number" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} className="font-bold h-9"/>
+                                <CurrencyInput value={item.price} onValueChange={(v) => updateItem(index, 'price', v)} className="font-bold h-9"/>
                             </div>
                             <div className="flex flex-col justify-end">
                                 <label className="text-xs text-slate-500">Satır Toplamı</label>
                                 <div className="h-9 flex items-center justify-end font-mono font-bold text-slate-700 bg-slate-50 rounded-md px-3 border">
-                                    {new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(rowTotal)} {currency === "TRY" ? "₺" : currency}
+                                    {new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(rowTotal)} {currency === "TRY" ? "₺" : currency}
                                 </div>
                             </div>
                         </div>
@@ -519,7 +518,7 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                               </div>
                               <div className="flex-1">
                                   <label className="text-xs text-slate-400">Tutar ({currency})</label>
-                                  <Input type="number" value={p.amount} onChange={(e) => updatePayment(idx, 'amount', e.target.value)} className="h-9 sm:h-8 font-bold"/>
+                                  <CurrencyInput value={p.amount} onValueChange={(v) => updatePayment(idx, 'amount', v)} className="h-9 sm:h-8 font-bold"/>
                               </div>
                               <Button type="button" variant="ghost" size="icon" onClick={() => setPayments(payments.filter((_, i) => i !== idx))} className="h-8 w-8 text-red-500 self-end">
                                 <Trash2 size={14}/>
@@ -539,7 +538,7 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                   <div className="flex justify-between items-center text-sm">
                       <span className="text-slate-500 font-medium">Genel Toplam</span>
                       <span className="font-bold text-lg text-slate-800">
-                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(displayAmount(totalAmountTL))}
+                        {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(displayAmount(totalAmountTL))}
                       </span>
                   </div>
                   <div className="flex justify-between items-center text-xs text-slate-400 -mt-2">
@@ -547,13 +546,13 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                   </div>
                   <div className="flex justify-between items-center text-sm text-emerald-600">
                       <span>Ödenen</span>
-                      <span className="font-bold">(-) {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(displayAmount(paidAmountTL))}</span>
+                      <span className="font-bold">(-) {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(displayAmount(paidAmountTL))}</span>
                   </div>
                   <div className="h-px bg-slate-300 my-2"></div>
                   <div className="flex justify-between items-center">
                       <span className="font-bold text-slate-700">KALAN</span>
                       <span className={`text-2xl font-black ${remainingAmountTL > 0.1 ? 'text-red-600' : 'text-slate-400'}`}>
-                          {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency }).format(displayAmount(remainingAmountTL))}
+                          {new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(displayAmount(remainingAmountTL))}
                       </span>
                   </div>
               </CardContent>
