@@ -18,6 +18,8 @@ interface EditProductFormProps {
     stock: number
     vatRate: number
     unit?: string
+    currency?: string
+    exchangeRate?: number | string
   }
 }
 
@@ -53,7 +55,7 @@ export function EditProductForm({ product }: EditProductFormProps) {
       
       <div className="flex flex-col md:flex-row gap-4">
         <div className="grid w-full gap-2">
-          <label className="text-sm font-medium">Fiyat (TL)</label>
+          <label className="text-sm font-medium">Fiyat (₺ TL)</label>
           <Input 
             name="price" 
             type="text" 
@@ -100,6 +102,34 @@ export function EditProductForm({ product }: EditProductFormProps) {
           <option value="18">%18</option>
           <option value="20">%20</option>
         </select>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-4">
+        <div className="space-y-2 w-full">
+          <Label htmlFor="currency">Para Birimi</Label>
+          <Select name="currency" defaultValue={product.currency || "TRY"}>
+            <SelectTrigger>
+              <SelectValue placeholder="Para Birimi Seç" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TRY">₺ TRY</SelectItem>
+              <SelectItem value="USD">$ USD</SelectItem>
+              <SelectItem value="EUR">€ EUR</SelectItem>
+              <SelectItem value="GBP">£ GBP</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="grid w-full gap-2">
+          <Label>Kur</Label>
+          <Input
+            name="exchangeRate"
+            type="text"
+            step="0.01"
+            placeholder="1"
+            defaultValue={product.exchangeRate?.toString() || "1"}
+          />
+        </div>
       </div>
 
       <div className="flex justify-end gap-2 pt-4">

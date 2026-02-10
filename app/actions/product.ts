@@ -10,18 +10,33 @@ import { revalidatePath } from "next/cache";
 function cleanPrice(priceString: string) {
   if (!priceString) return "0";
 
-  // Sadece nokta varsa (10.50) -> Dokunma
-  // Sadece virgül varsa (10,50) -> Noktaya çevir
+  // Boşlukları temizle
+  priceString = priceString.trim();
+
   // Hem nokta hem virgül varsa (1.000,50) -> Noktayı sil, virgülü nokta yap
   if (priceString.includes(".") && priceString.includes(",")) {
     priceString = priceString.replace(/\./g, "");
-  } else if (priceString.includes(".") && !priceString.includes(",")) {
-    // 1.000 gibi binlik ayracı olabilir, ama JS float için nokta kullanır.
-    // Eğer kuruş değilse ve binlikse silmek lazım. Ama riskli.
-    // Standart: TR formatı (1.000,50) varsayımıyla nokta silinir.
-    // priceString = priceString.replace(/\./g, ""); 
+    return priceString.replace(",", ".");
   }
 
+  // Birden fazla nokta varsa (100.000.000) -> Hepsi binlik ayraç, sil
+  const dotCount = (priceString.match(/\./g) || []).length;
+  if (dotCount > 1) {
+    return priceString.replace(/\./g, "");
+  }
+
+  // Tek nokta varsa: noktadan sonra 3 hane = binlik (1.000), değilse ondalık (10.50)
+  if (dotCount === 1) {
+    const afterDot = priceString.split(".")[1];
+    if (afterDot && afterDot.length === 3) {
+      // Binlik ayraç (1.000 -> 1000)
+      return priceString.replace(".", "");
+    }
+    // Ondalık (10.50 -> 10.50)
+    return priceString;
+  }
+
+  // Sadece virgül varsa (10,50) -> Noktaya çevir
   return priceString.replace(",", ".");
 }
 
@@ -42,12 +57,15 @@ export async function addProduct(formData: FormData) {
   const buyPriceStr = cleanPrice(formData.get("buyPrice") as string); // 👈 YENİ: Alış Fiyatı
   const stockStr = formData.get("stock") as string;
   const vatRateStr = formData.get("vatRate") as string;
-  const unit = (formData.get("unit") as string) || "Adet"; // 👈 YENİ: Birim
+  const unit = (formData.get("unit") as string) || "Adet";
+  const currency = (formData.get("currency") as string) || "TRY";
+  const exchangeRateStr = cleanPrice(formData.get("exchangeRate") as string);
 
   const price = parseFloat(priceStr) || 0;
   const buyPrice = parseFloat(buyPriceStr) || 0;
   const stock = parseInt(stockStr) || 0;
   const vatRate = parseFloat(vatRateStr) || 0;
+  const exchangeRate = currency === "TRY" ? 1 : (parseFloat(exchangeRateStr) || 1);
 
   if (!name) return { error: "Ürün adı zorunludur." };
 
@@ -61,7 +79,9 @@ export async function addProduct(formData: FormData) {
           buyPrice, // 👈 Kaydediyoruz
           stock,
           vatRate,
-          unit, // 👈 Kaydediyoruz
+          unit,
+          currency,
+          exchangeRate,
           tenantId: user.tenantId,
         },
       });
@@ -138,11 +158,14 @@ export async function updateProduct(formData: FormData) { // 👈 id'yi formData
   const stockStr = formData.get("stock") as string;
   const vatRateStr = formData.get("vatRate") as string;
   const unit = (formData.get("unit") as string) || "Adet";
+  const currency = (formData.get("currency") as string) || "TRY";
+  const exchangeRateStr = cleanPrice(formData.get("exchangeRate") as string);
 
   const price = parseFloat(priceStr) || 0;
   const buyPrice = parseFloat(buyPriceStr) || 0;
   const stock = parseInt(stockStr) || 0;
   const vatRate = parseFloat(vatRateStr) || 0;
+  const exchangeRate = currency === "TRY" ? 1 : (parseFloat(exchangeRateStr) || 1);
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -162,7 +185,9 @@ export async function updateProduct(formData: FormData) { // 👈 id'yi formData
           buyPrice,
           stock,
           vatRate,
-          unit, // 👈 Güncelliyoruz
+          unit,
+          currency,
+          exchangeRate,
         },
       });
 

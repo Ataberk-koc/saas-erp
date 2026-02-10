@@ -78,13 +78,24 @@ export default async function ProductsPage({
             </div>
 
             <div className="grid w-full gap-2">
-              <label className="text-sm font-medium">Fiyat (TL)</label>
+              <label className="text-sm font-medium">Fiyat (₺ TL)</label>
               <Input
                 name="price"
                 type="text"
                 step="0.01"
                 placeholder="1000.00"
                 required
+              />
+            </div>
+
+            <div className="grid w-full gap-2">
+              <label className="text-sm font-medium">Kur</label>
+              <Input
+                name="exchangeRate"
+                type="text"
+                step="0.01"
+                placeholder="1"
+                defaultValue="1"
               />
             </div>
 
@@ -125,6 +136,21 @@ export default async function ProductsPage({
               </select>
             </div>
 
+            <div className="grid gap-2">
+              <Label htmlFor="currency">Para Birimi</Label>
+              <Select name="currency" defaultValue="TRY">
+                <SelectTrigger>
+                  <SelectValue placeholder="Para Birimi Seç" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="TRY">₺ TRY</SelectItem>
+                  <SelectItem value="USD">$ USD</SelectItem>
+                  <SelectItem value="EUR">€ EUR</SelectItem>
+                  <SelectItem value="GBP">£ GBP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button type="submit" className="w-full md:w-auto">
               Ekle
             </Button>
@@ -146,7 +172,10 @@ export default async function ProductsPage({
               <thead className="bg-slate-100 border-b">
                 <tr>
                   <th className="p-4 font-medium whitespace-nowrap">Ürün Adı</th>
-                  <th className="p-4 font-medium whitespace-nowrap">Fiyat</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Fiyat (₺)</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Para Birimi</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Kur</th>
+                  <th className="p-4 font-medium whitespace-nowrap">Döviz Fiyatı</th>
                   <th className="p-4 font-medium whitespace-nowrap">KDV</th>
                   <th className="p-4 font-medium whitespace-nowrap">Birim</th>
                   <th className="p-4 font-medium whitespace-nowrap">Stok</th>
@@ -156,7 +185,7 @@ export default async function ProductsPage({
               <tbody>
                 {products.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-4 text-center text-slate-500">
+                    <td colSpan={9} className="p-4 text-center text-slate-500">
                       {query
                         ? `"${query}" ile eşleşen ürün bulunamadı.`
                         : "Henüz ürün eklenmemiş."}
@@ -173,6 +202,28 @@ export default async function ProductsPage({
                           style: "currency",
                           currency: "TRY",
                         }).format(Number(product.price))}
+                      </td>
+                      <td className="p-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded text-xs font-bold ${
+                          product.currency === "USD" ? "bg-emerald-100 text-emerald-700" :
+                          product.currency === "EUR" ? "bg-indigo-100 text-indigo-700" :
+                          product.currency === "GBP" ? "bg-purple-100 text-purple-700" :
+                          "bg-orange-100 text-orange-700"
+                        }`}>
+                          {product.currency === "USD" ? "$ USD" :
+                           product.currency === "EUR" ? "€ EUR" :
+                           product.currency === "GBP" ? "£ GBP" :
+                           "₺ TRY"}
+                        </span>
+                      </td>
+                      <td className="p-4 whitespace-nowrap text-slate-600">
+                        {Number(product.exchangeRate) === 1 ? "-" : Number(product.exchangeRate).toFixed(2)}
+                      </td>
+                      <td className="p-4 font-bold whitespace-nowrap text-blue-600">
+                        {product.currency === "TRY" ? "-" : new Intl.NumberFormat("tr-TR", {
+                          style: "currency",
+                          currency: product.currency || "TRY",
+                        }).format(Number(product.price) / (Number(product.exchangeRate) || 1))}
                       </td>
                       <td className="p-4 text-slate-600 whitespace-nowrap">
                         %{product.vatRate}{" "}

@@ -83,7 +83,9 @@ model Product {
 
   buyPrice    Decimal  @default(0) // Alış Fiyatı (Yeni)  
 
-  unit      String   @default("Adet") 
+  unit          String   @default("Adet") 
+  currency      String   @default("TRY") // TRY, USD, EUR, GBP
+  exchangeRate  Decimal  @default(1)   // Kur (TRY=1, USD=32.50 vb.)
 }
 
 // 5. FATURALAR

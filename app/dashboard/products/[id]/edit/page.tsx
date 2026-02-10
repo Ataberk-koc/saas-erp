@@ -33,7 +33,8 @@ export default async function EditProductPage({
   const productData = {
     ...product,
     price: Number(product.price),
-    buyPrice: Number(product.buyPrice)
+    buyPrice: Number(product.buyPrice),
+    exchangeRate: Number(product.exchangeRate),
   }
 
   return (
