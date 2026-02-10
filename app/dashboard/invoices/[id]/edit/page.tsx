@@ -67,7 +67,8 @@ export default async function EditInvoicePage({
     ...p,
     price: Number(p.price),
     buyPrice: Number(p.buyPrice),
-    stock: p.stock // stock alanını da ekledik
+    exchangeRate: Number(p.exchangeRate),
+    stock: p.stock
   }));
 
   return (

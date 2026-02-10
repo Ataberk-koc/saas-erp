@@ -25,9 +25,9 @@ export const customerSchema = z.object({
 
 // 3. ÜRÜN ŞEMASI
 export const productSchema = z.object({
-  name: z.string().min(2, "Ürün adı en az 2 karakter olmalı."),
-  // 👇 DÜZELTME 2: "invalid_type_error" parametresini kaldırdık.
-  // z.coerce.number() zaten sayıya çeviremezse hata verir.
+name: z.string()
+    .min(2, "Ürün adı en az 2 karakter olmalı.")
+    .regex(/^[^<>]*$/, "Ürün adında özel karakterler (<, >) kullanılamaz."),  
   price: z.coerce.number().min(0, "Fiyat 0'dan küçük olamaz."),
   stock: z.coerce.number().int().min(0, "Stok 0'dan küçük olamaz."),
   vatRate: z.coerce.number().min(0).max(100),

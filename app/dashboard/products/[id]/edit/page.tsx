@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { redirect, notFound } from "next/navigation"
 import { EditProductForm } from "@/components/dashboard/edit-product-form" // 👈 Yeni bileşeni çağırıyoruz
+import { ArrowLeft } from "lucide-react"        // 👈 İkon için import
+import Link from "next/link"                    // 👈 Link için import
 
 export default async function EditProductPage({
   params,
@@ -38,7 +40,11 @@ export default async function EditProductPage({
   }
 
   return (
-    <div className="p-4 md:p-10 bg-slate-50 min-h-screen flex justify-center items-start">
+    <div className="p-4 md:p-10 bg-slate-50 min-h-screen flex flex-col justify-start items-center gap-4">
+      <Link href="/dashboard/products" className="inline-flex items-center text-sm font-medium text-gray-800 hover:text-gray-900 self-start">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+       Ürünlere Geri Dön
+      </Link>
       <Card className="w-full max-w-2xl">
         <CardHeader>
           <CardTitle>✏️ Ürünü Düzenle</CardTitle>

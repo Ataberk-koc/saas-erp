@@ -17,13 +17,14 @@ export default function Pagination({ totalPages }: { totalPages: number }) {
   };
 
   return (
-    <div className="flex items-center justify-center gap-2 mt-8 py-4 border-t">
+    <div className="flex items-center justify-center gap-4 mt-8 py-4 border-t">
       {/* ÖNCEKİ SAYFA */}
       <Button
-        variant="outline"
+        variant={currentPage <= 1 ? "ghost" : "default"}
         size="sm"
         disabled={currentPage <= 1}
         asChild={currentPage > 1}
+        className={currentPage > 1 ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
       >
         {currentPage > 1 ? (
           <Link href={createPageURL(currentPage - 1)}>
@@ -36,16 +37,17 @@ export default function Pagination({ totalPages }: { totalPages: number }) {
         )}
       </Button>
 
-      <span className="text-sm font-medium text-slate-600 mx-4">
-        Sayfa {currentPage} / {totalPages === 0 ? 1 : totalPages}
+      <span className="text-sm font-semibold text-slate-700 px-4 py-2 bg-slate-100 rounded-md">
+        {currentPage} / {totalPages === 0 ? 1 : totalPages}
       </span>
 
       {/* SONRAKİ SAYFA */}
       <Button
-        variant="outline"
+        variant={currentPage >= totalPages ? "ghost" : "default"}
         size="sm"
         disabled={currentPage >= totalPages}
         asChild={currentPage < totalPages}
+        className={currentPage < totalPages ? "bg-blue-600 hover:bg-blue-700 text-white" : ""}
       >
         {currentPage < totalPages ? (
           <Link href={createPageURL(currentPage + 1)}>

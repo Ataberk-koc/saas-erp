@@ -29,11 +29,12 @@ export default async function CreateInvoicePage() {
     ...product,
     price: Number(product.price),
     buyPrice: Number(product.buyPrice),
+    exchangeRate: Number(product.exchangeRate),
   }))
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4">
-       <h1 className="text-3xl font-bold mb-8 text-slate-800">🧾 Yeni Fatura Kes</h1>
+    <div className="max-w-5xl mx-auto py-6 sm:py-10 px-3 sm:px-4">
+       <h1 className="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8 text-slate-800">🧾 Yeni Fatura Kes</h1>
        
        {/* Eski <CreateInvoiceForm /> yerine yeni bileşeni koyuyoruz.
           Yeni bileşenin kendi içinde Card tasarımı olduğu için 

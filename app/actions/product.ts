@@ -3,8 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
-// Şemanı güncellemediysek manuel parse edeceğiz veya şemayı güncellemen gerekebilir.
-// Şimdilik güvenli olması için manuel alıp tip dönüşümü yapıyorum.
+
 
 // Fiyat temizleme yardımcısı
 function cleanPrice(priceString: string) {
@@ -88,8 +87,6 @@ export async function addProduct(formData: FormData) {
 
       // 2. Stok Logu Oluştur
       if (stock > 0) {
-        // InventoryLog tablosunda 'unit' alanı yoksa hata vermemesi için sadece var olanları gönder
-        // Eğer InventoryLog'a da unit eklediysen buraya ekleyebilirsin.
         await tx.inventoryLog.create({
           data: {
             productId: newProduct.id,
@@ -153,6 +150,7 @@ export async function updateProduct(formData: FormData) { // 👈 id'yi formData
 
   const id = formData.get("id") as string;
   const name = formData.get("name") as string;
+  if (!name) return { error: "Ürün adı boş olamaz." };
   const priceStr = cleanPrice(formData.get("price") as string);
   const buyPriceStr = cleanPrice(formData.get("buyPrice") as string);
   const stockStr = formData.get("stock") as string;

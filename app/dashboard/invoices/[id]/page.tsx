@@ -89,6 +89,7 @@ export default async function InvoiceDetailPage({
         ...item.product,
         price: Number(item.product.price),
         buyPrice: Number(item.product.buyPrice),
+        exchangeRate: Number(item.product.exchangeRate),
       },
     })),
     payments: invoice.payments.map(p => ({

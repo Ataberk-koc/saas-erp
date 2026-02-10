@@ -254,22 +254,22 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
       
       {/* 1. ÜST BİLGİ KARTI */}
       <Card className={`border-l-4 ${type === 'PURCHASE' ? 'border-l-red-500' : 'border-l-blue-500'} shadow-sm`}>
-        <CardHeader className="pb-2 border-b mb-4 flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-2 border-b mb-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <CardTitle className="flex items-center gap-2 flex-wrap">
                 <span>{type === 'PURCHASE' ? 'Alış Faturası' : 'Satış Faturası'}</span>
                 {type === 'SALES' && <span className="text-xs font-normal text-slate-500 bg-slate-100 px-2 py-1 rounded">Maliyet + Kâr Modu</span>}
             </CardTitle>
-            <div className="flex gap-2">
-                <Button type="button" variant="outline" size="sm" onClick={handleClearPayments} className="text-red-600 gap-1">
+            <div className="flex gap-2 w-full sm:w-auto">
+                <Button type="button" variant="outline" size="sm" onClick={handleClearPayments} className="text-red-600 gap-1 flex-1 sm:flex-initial">
                     <RefreshCcw size={14}/> Sıfırla
                 </Button>
-                <Button type="button" variant="default" size="sm" onClick={handleMarkAsPaid} className="bg-emerald-600 hover:bg-emerald-700 gap-1">
+                <Button type="button" variant="default" size="sm" onClick={handleMarkAsPaid} className="bg-emerald-600 hover:bg-emerald-700 gap-1 flex-1 sm:flex-initial">
                     <CheckCircle2 size={14}/> Tamamı Ödendi
                 </Button>
             </div>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-6">
-            <div className="md:col-span-2">
+        <CardContent className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            <div className="sm:col-span-2">
                 <Label>Cari Hesap</Label>
                 <select 
                     name="customerId" 
@@ -314,7 +314,9 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
 
       {/* 2. ÜRÜN LİSTESİ */}
       <Card>
-        <CardContent className="p-0 overflow-x-auto">
+        <CardContent className="p-0">
+            {/* Desktop tablo görünümü */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-500 border-b">
                     <tr>
@@ -334,7 +336,6 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                 </thead>
                 <tbody className="divide-y">
                     {items.map((item, index) => {
-                        // TL bazında hesapla, sonra dövize çevir
                         const netPriceTL = (Number(item.price) + (Number(item.profit) || 0))
                         const rowTotalTL = netPriceTL * Number(item.quantity) * (1 + Number(item.vatRate)/100);
                         const rowTotal = displayAmount(rowTotalTL);
@@ -405,8 +406,95 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
                     )})}
                 </tbody>
             </table>
+            </div>
+
+            {/* Mobil kart görünümü */}
+            <div className="md:hidden divide-y">
+                {items.map((item, index) => {
+                    const netPriceTL = (Number(item.price) + (Number(item.profit) || 0))
+                    const rowTotalTL = netPriceTL * Number(item.quantity) * (1 + Number(item.vatRate)/100);
+                    const rowTotal = displayAmount(rowTotalTL);
+                    return (
+                    <div key={index} className="p-4 space-y-3 relative">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-400 uppercase">Ürün #{index + 1}</span>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => setItems(items.filter((_, i) => i !== index))} className="h-7 w-7 text-slate-400 hover:text-red-500">
+                                <Trash2 size={14}/>
+                            </Button>
+                        </div>
+                        <select 
+                            value={item.productId}
+                            onChange={(e) => handleProductChange(index, e.target.value)}
+                            className="flex h-10 w-full rounded-md border bg-transparent px-3 text-sm"
+                            required
+                        >
+                            <option value="">Ürün Seçiniz...</option>
+                            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                        <div className="grid grid-cols-3 gap-2">
+                            <div>
+                                <label className="text-xs text-slate-500">Miktar</label>
+                                <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, 'quantity', e.target.value)} className="h-9"/>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">Birim</label>
+                                <select
+                                    value={item.unit || "Adet"}
+                                    onChange={(e) => updateItem(index, 'unit', e.target.value)}
+                                    className="flex h-9 w-full rounded-md border bg-transparent px-2 text-sm"
+                                >
+                                    <option value="Adet">Adet</option>
+                                    <option value="Kg">Kg</option>
+                                    <option value="Metre">Metre</option>
+                                    <option value="Lt">Litre</option>
+                                    <option value="Koli">Koli</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="text-xs text-slate-500">KDV %</label>
+                                <Input type="number" value={item.vatRate} onChange={(e) => updateItem(index, 'vatRate', e.target.value)} className="h-9"/>
+                            </div>
+                        </div>
+                        {type === 'SALES' && (
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="text-xs text-slate-400">Maliyet</label>
+                                    <Input 
+                                        disabled 
+                                        value={new Intl.NumberFormat('tr-TR', { maximumFractionDigits: 2 }).format(Number(item.purchasePrice))} 
+                                        className="bg-slate-100/50 text-slate-400 border-transparent h-9"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-xs text-emerald-600 font-semibold">Kâr (+/-)</label>
+                                    <Input 
+                                        type="number" 
+                                        value={item.profit} 
+                                        onChange={(e) => updateItem(index, 'profit', e.target.value)} 
+                                        placeholder="0"
+                                        className="font-bold text-emerald-600 border-emerald-200 bg-emerald-50 focus:bg-white h-9"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-xs text-slate-500">Birim Fiyat</label>
+                                <Input type="number" value={item.price} onChange={(e) => updateItem(index, 'price', e.target.value)} className="font-bold h-9"/>
+                            </div>
+                            <div className="flex flex-col justify-end">
+                                <label className="text-xs text-slate-500">Satır Toplamı</label>
+                                <div className="h-9 flex items-center justify-end font-mono font-bold text-slate-700 bg-slate-50 rounded-md px-3 border">
+                                    {new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(rowTotal)} {currency === "TRY" ? "₺" : currency}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )})}
+            </div>
+
             <div className="p-4 bg-slate-50 border-t">
-                <Button type="button" variant="outline" onClick={() => setItems([...items, { productId: "", quantity: 1, price: 0, vatRate: 20, unit: "Adet", purchasePrice: 0, profit: 0 }])}>
+                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => setItems([...items, { productId: "", quantity: 1, price: 0, vatRate: 20, unit: "Adet", purchasePrice: 0, profit: 0 }])}>
                     <Plus size={16} className="mr-2"/> Yeni Satır
                 </Button>
             </div>
@@ -424,16 +512,16 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
               <CardContent>
                   <div className="space-y-3">
                       {payments.map((p, idx) => (
-                          <div key={idx} className="flex gap-2 items-end border-b pb-2 last:border-0">
+                          <div key={idx} className="flex flex-col sm:flex-row gap-2 sm:items-end border-b pb-3 last:border-0">
                               <div className="flex-1">
                                   <label className="text-xs text-slate-400">Tarih</label>
-                                  <Input type="date" value={p.date} onChange={(e) => updatePayment(idx, 'date', e.target.value)} className="h-8"/>
+                                  <Input type="date" value={p.date} onChange={(e) => updatePayment(idx, 'date', e.target.value)} className="h-9 sm:h-8"/>
                               </div>
                               <div className="flex-1">
                                   <label className="text-xs text-slate-400">Tutar ({currency})</label>
-                                  <Input type="number" value={p.amount} onChange={(e) => updatePayment(idx, 'amount', e.target.value)} className="h-8 font-bold"/>
+                                  <Input type="number" value={p.amount} onChange={(e) => updatePayment(idx, 'amount', e.target.value)} className="h-9 sm:h-8 font-bold"/>
                               </div>
-                              <Button type="button" variant="ghost" size="icon" onClick={() => setPayments(payments.filter((_, i) => i !== idx))} className="h-8 w-8 text-red-500">
+                              <Button type="button" variant="ghost" size="icon" onClick={() => setPayments(payments.filter((_, i) => i !== idx))} className="h-8 w-8 text-red-500 self-end">
                                 <Trash2 size={14}/>
                               </Button>
                           </div>
@@ -472,9 +560,9 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
           </Card>
       </div>
 
-      <div className="flex justify-end pt-4 gap-2">
-          <Input type="date" name="date" className="w-auto" defaultValue={initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} />
-          <Button type="submit" size="lg" className="w-full md:w-auto bg-blue-600 hover:bg-blue-700">
+      <div className="flex flex-col sm:flex-row justify-end pt-4 gap-3">
+          <Input type="date" name="date" className="w-full sm:w-auto" defaultValue={initialData ? new Date(initialData.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]} />
+          <Button type="submit" size="lg" className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700">
               <Calculator className="mr-2 h-4 w-4"/>
               {initialData ? 'Değişiklikleri Kaydet' : 'Faturayı Tamamla'}
           </Button>

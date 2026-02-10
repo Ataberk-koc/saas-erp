@@ -72,11 +72,14 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
         })
 
         if (existingProduct) {
-          // ✅ ÜRÜN VARSA: Stoğu ARTIR
+          // ✅ ÜRÜN VARSA: Stoğu ARTIR + Döviz/Maliyet Güncelle
           await tx.product.update({
             where: { id: existingProduct.id },
             data: {
-              stock: { increment: item.quantity }, // Artırıyoruz
+              stock: { increment: item.quantity },
+              buyPrice: item.price,
+              currency: currency,
+              exchangeRate: exchangeRate,
             }
           })
           productId = existingProduct.id
@@ -90,7 +93,9 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
               price: item.price,        // Birim fiyat (KDV hariç)
               buyPrice: item.price,     // Alış fiyatı
               vatRate: item.vatRate,
-              unit: item.unit           // Birim (Adet, Kg, Metre...)
+              unit: item.unit,          // Birim (Adet, Kg, Metre...)
+              currency: currency,       // Döviz birimi (TRY, USD, EUR, GBP)
+              exchangeRate: exchangeRate // Kur (Örn: 46.62)
             }
           })
           productId = newProduct.id
