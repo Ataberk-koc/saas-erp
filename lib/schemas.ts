@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+// XSS Koruma: Tehlikeli HTML/script içerikleri için Zod transformü
+const xssSafeString = (field: string, minLength = 0) =>
+  z.string()
+    .min(minLength, `${field} en az ${minLength} karakter olmalı.`)
+    .refine(
+      (val) => !/<script|<\/script|<iframe|<object|<embed|javascript:|on\w+\s*=/i.test(val),
+      { message: `${field} alanında güvenlik riski oluşturan içerik tespit edildi.` }
+    );
+
+const xssSafeOptionalString = () =>
+  z.string()
+    .refine(
+      (val) => !val || !/<script|<\/script|<iframe|<object|<embed|javascript:|on\w+\s*=/i.test(val),
+      { message: "Bu alanda güvenlik riski oluşturan içerik tespit edildi." }
+    )
+    .optional()
+    .or(z.literal(""));
+
 // 1. GİRİŞ & KAYIT ŞEMALARI
 export const signInSchema = z.object({
   email: z.string().email("Geçersiz e-posta adresi."),
@@ -7,7 +25,7 @@ export const signInSchema = z.object({
 });
 
 export const registerSchema = z.object({
-  name: z.string().min(2, "İsim en az 2 karakter olmalı."),
+  name: xssSafeString("İsim", 2),
   email: z.string().email("Geçersiz e-posta adresi."),
   password: z.string().min(6, "Şifre en az 6 karakter olmalı."),
   role: z.enum(["ADMIN", "ACCOUNTANT", "USER"]).optional(),
@@ -15,19 +33,16 @@ export const registerSchema = z.object({
 
 // 2. CARİ HESAP (MÜŞTERİ) ŞEMASI
 export const customerSchema = z.object({
-  name: z.string().min(2, "Firma/Kişi adı en az 2 karakter olmalı."),
+  name: xssSafeString("Firma/Kişi adı", 2),
   email: z.string().email("Geçersiz e-posta formatı.").optional().or(z.literal("")),
-  phone: z.string().optional(),
-  // 👇 DÜZELTME 1: "errorMap" kısmını kaldırdık, sadece enum tanımladık.
+  phone: xssSafeOptionalString(),
   type: z.enum(["BUYER", "SUPPLIER"]),
-  address: z.string().optional(),
+  address: xssSafeOptionalString(),
 });
 
 // 3. ÜRÜN ŞEMASI
 export const productSchema = z.object({
-name: z.string()
-    .min(2, "Ürün adı en az 2 karakter olmalı.")
-    .regex(/^[^<>]*$/, "Ürün adında özel karakterler (<, >) kullanılamaz."),  
+  name: xssSafeString("Ürün adı", 2),
   price: z.coerce.number().min(0, "Fiyat 0'dan küçük olamaz."),
   stock: z.coerce.number().int().min(0, "Stok 0'dan küçük olamaz."),
   vatRate: z.coerce.number().min(0).max(100),
@@ -35,18 +50,18 @@ name: z.string()
 
 // 4. ŞİRKET AYARLARI ŞEMASI
 export const companySchema = z.object({
-  name: z.string().min(2, "Şirket adı zorunludur."),
+  name: xssSafeString("Şirket adı", 2),
   email: z.string().email("Geçersiz e-posta.").optional().or(z.literal("")),
-  phone: z.string().optional(),
+  phone: xssSafeOptionalString(),
   website: z.string().url("Geçersiz web sitesi (http://...)").optional().or(z.literal("")),
-  address: z.string().optional(),
-  taxOffice: z.string().optional(),
-  taxNumber: z.string().optional(),
-  iban: z.string().optional(),
+  address: xssSafeOptionalString(),
+  taxOffice: xssSafeOptionalString(),
+  taxNumber: xssSafeOptionalString(),
+  iban: xssSafeOptionalString(),
 });
 
 export const updateProfileSchema = z.object({
-  name: z.string().min(2, "İsim en az 2 karakter olmalıdır."),
+  name: xssSafeString("İsim", 2),
 });
 
 // 6. ŞİFRE DEĞİŞTİRME

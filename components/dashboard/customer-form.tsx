@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useFormStatus } from "react-dom"
 import { toast } from "sonner" 
+import { containsXSS } from "@/lib/utils"
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -24,6 +25,16 @@ export function CustomerForm() {
   const formRef = useRef<HTMLFormElement>(null)
 
   async function clientAction(formData: FormData) {
+    // XSS ön kontrolü (client-side)
+    const textFields = ["name", "phone", "address"]
+    for (const field of textFields) {
+      const value = formData.get(field) as string
+      if (value && containsXSS(value)) {
+        toast.error(`${field === "name" ? "Ad" : field === "phone" ? "Telefon" : "Adres"} alanında güvenlik riski oluşturan içerik tespit edildi!`)
+        return
+      }
+    }
+
     const result = await addCustomer(formData) as { error?: string }
 
     if (result?.error) {

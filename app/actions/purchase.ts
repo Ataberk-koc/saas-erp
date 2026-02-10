@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db"
 import { auth } from "@/auth"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { sanitizeInput } from "@/lib/utils"
 
 // Form Doğrulama Şeması
 const PurchaseSchema = z.object({
@@ -32,6 +33,14 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
 
   const { supplierId, documentNumber, gcbNo, date, currency, exchangeRate, items } = validated.data
 
+  // XSS temizliği
+  const safeDocumentNumber = documentNumber ? sanitizeInput(documentNumber) : undefined
+  const safeGcbNo = gcbNo ? sanitizeInput(gcbNo) : undefined
+  const safeItems = items.map(item => ({
+    ...item,
+    productName: sanitizeInput(item.productName)
+  }))
+
   try {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       
@@ -49,8 +58,8 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
           customerId: supplierId, // Seçilen Cari Hesap
           type: "PURCHASE",       // 👈 ÖNEMLİ: Alış Faturası
           number: nextNumber,     // İç takip no
-          documentNumber: documentNumber, // Tedarikçi Fatura No
-          gcbNo: gcbNo,                     // GÇB Numarası
+          documentNumber: safeDocumentNumber, // Tedarikçi Fatura No
+          gcbNo: safeGcbNo,                     // GÇB Numarası
           date: date,
           dueDate: date,
           status: "PAID",         // Alışlar genelde peşin/ödendi girilir
@@ -60,7 +69,7 @@ export async function createPurchaseInvoice(data: z.infer<typeof PurchaseSchema>
       })
 
       // 3. Kalemleri İşle (Stok Artırma & Ürün Oluşturma)
-      for (const item of items) {
+      for (const item of safeItems) {
         let productId = ""
 
         // A. Ürün isminden kontrol et (Büyük/küçük harf duyarsız)

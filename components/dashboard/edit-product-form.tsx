@@ -10,6 +10,7 @@ import { toast } from "sonner"
 import Link from "next/link"
 import { Loader2 } from "lucide-react"
 import { CurrencyInput } from "@/components/ui/currency-input"
+import { containsXSS } from "@/lib/utils"
 
 interface EditProductFormProps {
   product: {
@@ -33,6 +34,14 @@ export function EditProductForm({ product }: EditProductFormProps) {
 
     const formData = new FormData(event.currentTarget)
     formData.set("id", product.id)
+
+    // XSS ön kontrolü (client-side)
+    const name = formData.get("name") as string
+    if (containsXSS(name)) {
+      toast.error("Ürün adında güvenlik riski oluşturan içerik tespit edildi!")
+      setLoading(false)
+      return
+    }
     
     // Server Action çağırıyoruz
     const result = await updateProduct(formData) as { error?: string }
@@ -124,10 +133,19 @@ export function EditProductForm({ product }: EditProductFormProps) {
           <Label>Kur</Label>
           <Input
             name="exchangeRate"
-            type="text"
-            step="0.01"
+            type="number"
+            step="0.0001"
+            min="0.0001"
             placeholder="1"
             defaultValue={product.exchangeRate?.toString() || "1"}
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+              if (
+                !/[0-9.,]/.test(e.key) &&
+                !['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'].includes(e.key)
+              ) {
+                e.preventDefault()
+              }
+            }}
           />
         </div>
       </div>

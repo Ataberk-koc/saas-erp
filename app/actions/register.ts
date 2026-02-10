@@ -3,10 +3,11 @@
 import { prisma } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
+import { sanitizeInput } from "@/lib/utils";
 
 export async function registerAction(formData: FormData) {
-  const name = formData.get("name") as string;
-  const companyName = formData.get("companyName") as string;
+  const name = sanitizeInput(formData.get("name") as string);
+  const companyName = sanitizeInput(formData.get("companyName") as string);
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 

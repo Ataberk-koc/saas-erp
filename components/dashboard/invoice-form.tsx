@@ -11,6 +11,7 @@ import { Plus, Trash2, Wallet, Calculator, RefreshCcw, CheckCircle2 } from "luci
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { CurrencyInput } from "@/components/ui/currency-input"
+import { containsXSS } from "@/lib/utils"
 
 // --- TİP TANIMLAMALARI ---
 interface Customer {
@@ -151,6 +152,14 @@ export function InvoiceForm({ customers, products, initialData }: Props) {
   }
 
   const handleSubmit = async (formData: FormData) => {
+    // XSS ön kontrolü (client-side)
+    for (const p of payments) {
+      if (p.note && containsXSS(p.note)) {
+        toast.error("Ödeme notunda güvenlik riski oluşturan içerik tespit edildi!")
+        return
+      }
+    }
+
     formData.set("type", type)
     formData.set("currency", currency)
     formData.set("exchangeRate", exchangeRate.replace(',', '.'))

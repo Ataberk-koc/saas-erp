@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { z } from "zod"
+import { sanitizeInput } from "@/lib/utils"
 
 // --- 1. KATEGORİ İŞLEMLERİ ---
 
@@ -12,7 +13,7 @@ export async function addCategory(formData: FormData) {
   const session = await auth()
   if (!session?.user?.tenantId) return { error: "Yetkisiz işlem" }
 
-  const name = formData.get("name") as string
+  const name = sanitizeInput(formData.get("name") as string)
 
   if (!name) return { error: "Kategori adı boş olamaz" }
 
@@ -55,11 +56,11 @@ export async function addExpense(formData: FormData) {
   const session = await auth()
   if (!session?.user?.tenantId) return { error: "Yetkisiz işlem" }
 
-  // Form verilerini object'e çevirip doğrula
+  // Form verilerini object'e çevirip doğrula (XSS temizliği dahil)
   const rawData = {
-    description: formData.get("description"),
+    description: sanitizeInput(formData.get("description") as string),
     amount: formData.get("amount"),
-    category: formData.get("category"),
+    category: sanitizeInput(formData.get("category") as string),
     date: formData.get("date") || new Date()
   }
 

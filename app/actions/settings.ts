@@ -3,6 +3,7 @@
 import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
+import { sanitizeInput } from "@/lib/utils"
 
 export async function updateCompanyInfo(formData: FormData) {
   const session = await auth()
@@ -19,14 +20,14 @@ export async function updateCompanyInfo(formData: FormData) {
     await prisma.tenant.update({
       where: { id: user.tenantId },
       data: {
-        name: formData.get("name") as string,
-        email: formData.get("email") as string,
-        phone: formData.get("phone") as string,
-        address: formData.get("address") as string,
-        website: formData.get("website") as string,
-        taxOffice: formData.get("taxOffice") as string,
-        taxNumber: formData.get("taxNumber") as string,
-        iban: formData.get("iban") as string,
+        name: sanitizeInput(formData.get("name") as string),
+        email: sanitizeInput(formData.get("email") as string),
+        phone: sanitizeInput(formData.get("phone") as string),
+        address: sanitizeInput(formData.get("address") as string),
+        website: sanitizeInput(formData.get("website") as string),
+        taxOffice: sanitizeInput(formData.get("taxOffice") as string),
+        taxNumber: sanitizeInput(formData.get("taxNumber") as string),
+        iban: sanitizeInput(formData.get("iban") as string),
       }
     })
 

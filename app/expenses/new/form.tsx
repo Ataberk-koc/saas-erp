@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Trash2, Plus, Save, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { CurrencyInput } from "@/components/ui/currency-input"
+import { containsXSS } from "@/lib/utils"
 
 // Tip Tanımları
 interface Customer {
@@ -100,6 +101,20 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
 
     if (!supplierId) {
       setError("Lütfen bir tedarikçi seçiniz.")
+      setLoading(false)
+      return
+    }
+
+    // XSS ön kontrolü (client-side)
+    for (const item of items) {
+      if (containsXSS(item.productName)) {
+        setError("Ürün adında güvenlik riski oluşturan içerik tespit edildi!")
+        setLoading(false)
+        return
+      }
+    }
+    if (documentNumber && containsXSS(documentNumber)) {
+      setError("Belge numarasında güvenlik riski oluşturan içerik tespit edildi!")
       setLoading(false)
       return
     }

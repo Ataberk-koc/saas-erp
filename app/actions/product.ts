@@ -3,6 +3,7 @@
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { sanitizeInput } from "@/lib/utils";
 
 
 // Fiyat temizleme yardımcısı
@@ -51,12 +52,12 @@ export async function addProduct(formData: FormData) {
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" };
 
   // Manuel Veri Alma (Şema validasyonu yerine güvenli manuel dönüşüm)
-  const name = formData.get("name") as string;
+  const name = sanitizeInput(formData.get("name") as string);
   const priceStr = cleanPrice(formData.get("price") as string);
   const buyPriceStr = cleanPrice(formData.get("buyPrice") as string); // 👈 YENİ: Alış Fiyatı
   const stockStr = formData.get("stock") as string;
   const vatRateStr = formData.get("vatRate") as string;
-  const unit = (formData.get("unit") as string) || "Adet";
+  const unit = sanitizeInput((formData.get("unit") as string) || "Adet");
   const currency = (formData.get("currency") as string) || "TRY";
   const exchangeRateStr = cleanPrice(formData.get("exchangeRate") as string);
 
@@ -64,7 +65,13 @@ export async function addProduct(formData: FormData) {
   const buyPrice = parseFloat(buyPriceStr) || 0;
   const stock = parseInt(stockStr) || 0;
   const vatRate = parseFloat(vatRateStr) || 0;
-  const exchangeRate = currency === "TRY" ? 1 : (parseFloat(exchangeRateStr) || 1);
+
+  // Kur değerini doğrula: sadece sayısal değer kabul et, string engelle
+  const parsedRate = parseFloat(exchangeRateStr);
+  if (isNaN(parsedRate) || parsedRate <= 0) {
+    return { error: "Kur değeri geçerli bir pozitif sayı olmalıdır." };
+  }
+  const exchangeRate = parsedRate;
 
   if (!name) return { error: "Ürün adı zorunludur." };
 
@@ -149,13 +156,13 @@ export async function updateProduct(formData: FormData) { // 👈 id'yi formData
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" };
 
   const id = formData.get("id") as string;
-  const name = formData.get("name") as string;
+  const name = sanitizeInput(formData.get("name") as string);
   if (!name) return { error: "Ürün adı boş olamaz." };
   const priceStr = cleanPrice(formData.get("price") as string);
   const buyPriceStr = cleanPrice(formData.get("buyPrice") as string);
   const stockStr = formData.get("stock") as string;
   const vatRateStr = formData.get("vatRate") as string;
-  const unit = (formData.get("unit") as string) || "Adet";
+  const unit = sanitizeInput((formData.get("unit") as string) || "Adet");
   const currency = (formData.get("currency") as string) || "TRY";
   const exchangeRateStr = cleanPrice(formData.get("exchangeRate") as string);
 
@@ -163,7 +170,13 @@ export async function updateProduct(formData: FormData) { // 👈 id'yi formData
   const buyPrice = parseFloat(buyPriceStr) || 0;
   const stock = parseInt(stockStr) || 0;
   const vatRate = parseFloat(vatRateStr) || 0;
-  const exchangeRate = currency === "TRY" ? 1 : (parseFloat(exchangeRateStr) || 1);
+
+  // Kur değerini doğrula: sadece sayısal değer kabul et, string engelle
+  const parsedRateUpdate = parseFloat(exchangeRateStr);
+  if (isNaN(parsedRateUpdate) || parsedRateUpdate <= 0) {
+    return { error: "Kur değeri geçerli bir pozitif sayı olmalıdır." };
+  }
+  const exchangeRate = parsedRateUpdate;
 
   try {
     await prisma.$transaction(async (tx) => {

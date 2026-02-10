@@ -9,11 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CurrencyInput } from "@/components/ui/currency-input"
 import { toast } from "sonner"
+import { containsXSS } from "@/lib/utils"
 
 export function AddProductForm() {
   const formRef = useRef<HTMLFormElement>(null)
 
   async function handleSave(formData: FormData) {
+    // XSS ön kontrolü (client-side)
+    const name = formData.get("name") as string
+    if (containsXSS(name)) {
+      toast.error("Ürün adında güvenlik riski oluşturan içerik tespit edildi!")
+      return
+    }
+
     const result = await addProduct(formData) as { error?: string; success?: boolean }
     if (result?.error) {
       toast.error(result.error)
@@ -52,10 +60,20 @@ export function AddProductForm() {
             <label className="text-sm font-medium">Kur</label>
             <Input
               name="exchangeRate"
-              type="text"
-              step="0.01"
+              type="number"
+              step="0.0001"
+              min="0.0001"
               placeholder="1"
               defaultValue="1"
+              onKeyDown={(e) => {
+                // Sadece sayı, nokta, virgül, backspace, tab, ok tuşları izin ver
+                if (
+                  !/[0-9.,]/.test(e.key) &&
+                  !['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'].includes(e.key)
+                ) {
+                  e.preventDefault()
+                }
+              }}
             />
           </div>
 

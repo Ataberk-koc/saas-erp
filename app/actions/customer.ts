@@ -5,6 +5,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { customerSchema } from "@/lib/schemas" // 👈 Şemayı import ettik
+import { sanitizeInput } from "@/lib/utils"
 
 export async function addCustomer(formData: FormData) {
   // 1. Oturum kontrolü
@@ -22,13 +23,13 @@ export async function addCustomer(formData: FormData) {
     return { error: "Kullanıcı veya Şirket bulunamadı!" }
   }
 
-  // 3. Form verilerini al ve Hazırla
+  // 3. Form verilerini al ve XSS temizliğini yap
   const rawData = {
-    name: formData.get("name"),
-    email: formData.get("email") || "",
-    phone: formData.get("phone") || "",
+    name: sanitizeInput(formData.get("name") as string),
+    email: sanitizeInput((formData.get("email") as string) || ""),
+    phone: sanitizeInput((formData.get("phone") as string) || ""),
     type: formData.get("type"), // "BUYER" veya "SUPPLIER"
-    address: formData.get("address") || "",
+    address: sanitizeInput((formData.get("address") as string) || ""),
   }
 
   // 4. Zod ile Validasyon (Denetleme) Yap 🛡️

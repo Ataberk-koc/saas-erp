@@ -4,6 +4,7 @@ import { auth } from "@/auth"
 import { prisma } from "@/lib/db"
 import { revalidatePath } from "next/cache"
 import { InvoiceType, InvoiceStatus } from "@prisma/client"
+import { sanitizeInput } from "@/lib/utils"
 
 // Tipler
 interface InvoiceItemInput {
@@ -83,7 +84,7 @@ export async function createInvoice(
           create: payments.map(p => ({
             amount: p.amount,
             date: new Date(p.date),
-            note: p.note
+            note: p.note ? sanitizeInput(p.note) : undefined
           }))
         }
       }
@@ -160,7 +161,7 @@ export async function updateInvoice(
           create: payments.map(p => ({
             amount: p.amount,
             date: new Date(p.date),
-            note: p.note
+            note: p.note ? sanitizeInput(p.note) : undefined
           }))
         }
       }
@@ -227,7 +228,7 @@ export async function addPayment(invoiceId: string, amount: number, date: string
         invoiceId,
         amount,
         date: new Date(date),
-        note
+        note: sanitizeInput(note)
       }
     })
 

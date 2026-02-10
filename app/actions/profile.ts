@@ -5,13 +5,14 @@ import { prisma } from "@/lib/db"
 import { updateProfileSchema, changePasswordSchema } from "@/lib/schemas"
 import { revalidatePath } from "next/cache"
 import bcrypt from "bcryptjs" // Şifre kırma/eşleştirme için
+import { sanitizeInput } from "@/lib/utils"
 
 // 1. İSİM GÜNCELLEME
 export async function updateProfile(formData: FormData) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Oturum açmanız gerekiyor." }
 
-  const rawData = { name: formData.get("name") }
+  const rawData = { name: sanitizeInput(formData.get("name") as string) }
   const validation = updateProfileSchema.safeParse(rawData)
 
   if (!validation.success) {
