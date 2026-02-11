@@ -46,7 +46,7 @@ export default async function ProductsPage({
   // 4. Verileri Çek (Sadece o sayfanın verisi)
   const products = await prisma.product.findMany({
     where: whereCondition,
-    orderBy: { id: "desc" },
+    orderBy: { createdAt: "desc" }, 
     skip: (currentPage - 1) * ITEMS_PER_PAGE,
     take: ITEMS_PER_PAGE,
   });

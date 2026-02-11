@@ -65,7 +65,7 @@ export function EditProductForm({ product }: EditProductFormProps) {
       
       <div className="flex flex-col md:flex-row gap-4">
         <div className="grid w-full gap-2">
-          <label className="text-sm font-medium">Fiyat (₺ TL)</label>
+          <label className="text-sm font-medium">Fiyat</label>
           <CurrencyInput 
             name="price" 
             defaultValue={product.price} 

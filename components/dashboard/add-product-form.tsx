@@ -48,7 +48,7 @@ export function AddProductForm() {
           </div>
 
           <div className="grid w-full gap-2">
-            <label className="text-sm font-medium">Fiyat (₺ TL)</label>
+            <label className="text-sm font-medium">Fiyat</label>
             <CurrencyInput
               name="price"
               placeholder="1.000,00"
