@@ -60,7 +60,7 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
           <SidebarLink
             href="/dashboard/customers"
             icon="👥"
-            label="Cari Hesaplar"
+            label="Müşteri/Tedarikçiler"
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink

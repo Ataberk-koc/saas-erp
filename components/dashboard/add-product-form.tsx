@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { addProduct } from "@/app/actions/product"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,11 +8,26 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CurrencyInput } from "@/components/ui/currency-input"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { containsXSS } from "@/lib/utils"
 
+
+
 export function AddProductForm() {
   const formRef = useRef<HTMLFormElement>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [confirmMessage, setConfirmMessage] = useState("")
+  const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
   async function handleSave(formData: FormData) {
     // XSS ön kontrolü (client-side)
@@ -22,13 +37,54 @@ export function AddProductForm() {
       return
     }
 
-    const result = await addProduct(formData) as { error?: string; success?: boolean }
+    const result = await addProduct(formData) as {
+      error?: string
+      success?: boolean
+      message?: string
+      confirmationRequired?: boolean
+    }
+
+    if (result?.confirmationRequired) {
+      // Sunucu "bu ürün zaten var" dedi → formu sakla ve modal aç
+      setPendingFormData(formData)
+      setConfirmMessage(result.message || "Bu isimde bir ürün zaten mevcut. Stokları birleştirmek ister misiniz?")
+      setConfirmOpen(true)
+      return
+    }
+
     if (result?.error) {
       toast.error(result.error)
     } else {
-      toast.success("Ürün başarıyla eklendi!")
+      toast.success(result?.message || "Ürün başarıyla eklendi!")
       formRef.current?.reset()
     }
+  }
+
+  async function handleConfirmMerge() {
+    if (!pendingFormData) return
+
+    // forceMerge=true ekleyerek tekrar gönder
+    const mergeData = new FormData()
+    pendingFormData.forEach((value, key) => {
+      mergeData.append(key, value)
+    })
+    mergeData.append("forceMerge", "true")
+
+    const result = await addProduct(mergeData) as {
+      error?: string
+      success?: boolean
+      message?: string
+    }
+
+    if (result?.error) {
+      toast.error(result.error)
+    } else {
+      toast.success(result?.message || "Stoklar başarıyla birleştirildi!")
+      formRef.current?.reset()
+    }
+
+    setPendingFormData(null)
+    setConfirmOpen(false)
   }
 
   return (
@@ -134,6 +190,24 @@ export function AddProductForm() {
           </Button>
         </form>
       </CardContent>
+
+      {/* Mükerrer ürün onay modalı */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>⚠️ Mevcut Ürün Tespit Edildi</AlertDialogTitle>
+            <AlertDialogDescription>{confirmMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingFormData(null); setConfirmOpen(false) }}>
+              Hayır, İptal Et
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmMerge}>
+              Evet, Stokları Birleştir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   )
 }

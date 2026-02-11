@@ -75,6 +75,57 @@ export async function addProduct(formData: FormData) {
 
   if (!name) return { error: "Ürün adı zorunludur." };
 
+  // Aynı isimde ürün var mı kontrol et
+  const existingProduct = await prisma.product.findFirst({
+    where: {
+      tenantId: user.tenantId,
+      name: {
+        equals: name,
+        mode: "insensitive"
+      }
+    }
+  });
+
+  // Eğer ürün varsa, özel bir cevap dön
+  if (existingProduct) {
+    // Kullanıcı "Evet" dediyse birleştir
+    if (formData.get("forceMerge") === "true") {
+      try {
+        await prisma.$transaction(async (tx) => {
+          // Mevcut stoğu artır
+          await tx.product.update({
+            where: { id: existingProduct.id },
+            data: { stock: { increment: stock } }
+          });
+
+          // Log oluştur
+          if (stock > 0) {
+            await tx.inventoryLog.create({
+              data: {
+                productId: existingProduct.id,
+                change: stock,
+                newStock: existingProduct.stock + stock,
+                type: "PURCHASE",
+                note: `Mükerrer ürün ekleme tespiti ile stok birleştirildi. (+${stock})`,
+                tenantId: user.tenantId,
+              }
+            });
+          }
+        });
+        revalidatePath("/dashboard/products");
+        return { success: true, message: "Stoklar başarıyla birleştirildi!" };
+      } catch {
+        return { error: "Birleştirme sırasında hata oluştu." };
+      }
+    }
+
+    // Kullanıcı henüz onay vermediyse, ona sor
+    return {
+      confirmationRequired: true,
+      message: `"${existingProduct.name}" isminde bir ürün zaten var (Mevcut Stok: ${existingProduct.stock}). Girdiğiniz ${stock} adeti mevcut stoğun üzerine eklemek ister misiniz?`
+    };
+  }
+
   try {
     await prisma.$transaction(async (tx) => {
       // 1. Ürünü Oluştur
@@ -114,6 +165,7 @@ export async function addProduct(formData: FormData) {
     return { error: "Ürün eklenirken hata oluştu." };
   }
 }
+
 
 // 2. ÜRÜN SİLME
 export async function deleteProduct(id: string) {
