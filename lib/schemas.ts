@@ -33,8 +33,8 @@ export const registerSchema = z.object({
 
 // 2. CARİ HESAP (MÜŞTERİ) ŞEMASI
 export const customerSchema = z.object({
-  name: xssSafeString("Firma/Kişi adı", 2),
-  email: z.string().email("Geçersiz e-posta formatı.").optional().or(z.literal("")),
+  name: xssSafeString("Firma/Kişi adı"),
+  email: z.string().max(25, "E-posta adresi en fazla 25 karakter olmalı.").email("Geçersiz e-posta formatı.").optional().or(z.literal("")),
   phone: xssSafeOptionalString(),
   type: z.enum(["BUYER", "SUPPLIER"]),
   address: xssSafeOptionalString(),

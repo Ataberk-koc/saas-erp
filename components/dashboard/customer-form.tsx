@@ -55,7 +55,7 @@ export function CustomerForm() {
       
       <div className="grid gap-2">
         <label className="text-sm font-medium">Email</label>
-        <Input name="email" placeholder="ahmet@mail.com" />
+        <Input name="email" placeholder="ahmet@mail.com" maxLength={25} />
       </div>
 
       <div className="grid gap-2">
