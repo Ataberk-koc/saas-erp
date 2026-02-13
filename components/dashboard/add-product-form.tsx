@@ -24,12 +24,18 @@ import { containsXSS } from "@/lib/utils"
 
 
 export function AddProductForm() {
+
   const formRef = useRef<HTMLFormElement>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState("")
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
+  const [currency, setCurrency] = useState("TRY");
+  const [unit, setUnit] = useState("Adet");
 
   async function handleSave(formData: FormData) {
+    // Radix Select ile seçilen değerleri FormData'ya ekle
+    formData.set("currency", currency);
+    formData.set("unit", unit);
     // XSS ön kontrolü (client-side)
     const name = formData.get("name") as string
     if (containsXSS(name)) {
@@ -140,7 +146,7 @@ export function AddProductForm() {
 
           <div className="grid gap-2">
             <Label htmlFor="unit">Birim</Label>
-            <Select name="unit" defaultValue="Adet">
+            <Select value={unit} onValueChange={setUnit}>
               <SelectTrigger>
                 <SelectValue placeholder="Birim Seç" />
               </SelectTrigger>
@@ -172,7 +178,7 @@ export function AddProductForm() {
 
           <div className="grid gap-2">
             <Label htmlFor="currency">Para Birimi</Label>
-            <Select name="currency" defaultValue="TRY">
+            <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger>
                 <SelectValue placeholder="Para Birimi Seç" />
               </SelectTrigger>

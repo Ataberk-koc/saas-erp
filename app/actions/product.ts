@@ -61,7 +61,8 @@ export async function addProduct(formData: FormData) {
   const currency = (formData.get("currency") as string) || "TRY";
   const exchangeRateStr = cleanPrice(formData.get("exchangeRate") as string);
 
-  const price = parseFloat(priceStr) || 0;
+
+  let price = parseFloat(priceStr) || 0;
   const buyPrice = parseFloat(buyPriceStr) || 0;
   const stock = parseInt(stockStr) || 0;
   const vatRate = parseFloat(vatRateStr) || 0;
@@ -72,6 +73,8 @@ export async function addProduct(formData: FormData) {
     return { error: "Kur değeri geçerli bir pozitif sayı olmalıdır." };
   }
   const exchangeRate = parsedRate;
+
+  // Fiyatı her zaman TL olarak kaydet, asla kur ile çarpma!
 
   if (!name) return { error: "Ürün adı zorunludur." };
 
