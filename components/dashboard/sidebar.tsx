@@ -5,7 +5,8 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-
+import { useLanguage } from "@/components/providers/language-provider";
+import { LanguageSwitcher } from "@/components/language-switcher"; // 👈 Bunu ekledik
 
 interface SidebarProps {
   user?: {
@@ -19,6 +20,7 @@ interface SidebarProps {
 
 export function Sidebar({ user, logoutBtn }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { dictionary } = useLanguage(); // 👈 Sözlüğü çektik
 
   return (
     <>
@@ -39,7 +41,7 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r shadow-md flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen",
-          isOpen ? "translate-x-0" : "-translate-x-full",
+          isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         {/* Logo Alanı */}
@@ -54,69 +56,73 @@ export function Sidebar({ user, logoutBtn }: SidebarProps) {
           <SidebarLink
             href="/dashboard"
             icon="📊"
-            label="Genel Bakış"
+            label={dictionary.sidebar.dashboard}
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
             href="/dashboard/customers"
             icon="👥"
-            label="Müşteri/Tedarikçiler"
+            label={dictionary.sidebar.customers}
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
             href="/dashboard/products"
             icon="📦"
-            label="Ürünler"
+            label={dictionary.sidebar.products}
             onClick={() => setIsOpen(false)}
           />
-          
 
           <SidebarLink
             href="/dashboard/invoices"
             icon="🧾"
-            label="Faturalar"
+            label={dictionary.sidebar.invoices}
             onClick={() => setIsOpen(false)}
           />
-                    
+
           <SidebarLink
             href="/dashboard/expense"
             icon="💸"
-            label="Giderler"
+            label={dictionary.sidebar.expenses || "Giderler"} 
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
             href="/dashboard/ai"
             icon="🤖"
-            label="AI Analiz"
+            label={dictionary.sidebar.ai || "AI Analiz"}
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
             href="/dashboard/profile"
-            icon="👤 "
-            label="Profil"
+            icon="👤"
+            label={dictionary.sidebar.profile || "Profil"}
             onClick={() => setIsOpen(false)}
           />
           <SidebarLink
             href="/dashboard/reports"
             icon="📈"
-            label="Raporlar"
+            label={dictionary.sidebar.reports}
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* ✅ SADECE ADMIN GÖRSÜN */}
           {user?.role === "ADMIN" && (
-            <SidebarLink 
-              href="/dashboard/settings" 
-              icon="⚙️" 
-              label="Ayarlar" 
+            <SidebarLink
+              href="/dashboard/settings"
+              icon="⚙️"
+              label={dictionary.sidebar.settings}
               onClick={() => setIsOpen(false)}
             />
           )}
         </nav>
 
-        {/* Alt Profil Alanı */}
-        <div className="p-4 border-t bg-slate-50">
-          <div className="flex items-center gap-3 mb-4">
+        {/* Alt Profil ve Dil Alanı */}
+        <div className="p-4 border-t bg-slate-50 flex flex-col gap-3">
+          {/* Dil Değiştirici */}
+          <div className="flex justify-center">
+             <LanguageSwitcher />
+          </div>
+
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold text-sm">
               {user?.name?.charAt(0) || "U"}
             </div>

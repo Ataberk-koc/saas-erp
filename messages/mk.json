@@ -1,0 +1,32 @@
+{
+  "sidebar": {
+    "dashboard": "Табла",
+    "invoices": "Фактури",
+    "customers": "Клиенти",
+    "products": "Производи",
+    "reports": "Извештаи",
+    "settings": "Поставки",
+    "users": "Корисници",
+    "roles": "Улоги",
+    "permissions": "Дозволи",
+    "logout": "Одјави се",
+    "profile": "Профил",
+    "login": "Најави се",
+    "register": "Регистрирај се",
+    "expenses": "Трошоци",
+    "ai": "АИ Анализа"
+  },
+  "dashboard": {
+    "welcome": "Добредојдовте",
+    "totalSales": "Вкупна продажба",
+    "activeCustomers": "Активни клиенти"
+  },
+  "common": {
+    "add": "Додај",
+    "edit": "Уреди",
+    "delete": "Избриши",
+    "save": "Зачувај",
+    "cancel": "Откажи",
+    "search": "Барај..."
+  }
+}

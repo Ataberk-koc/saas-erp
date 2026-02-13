@@ -1,0 +1,32 @@
+{
+  "sidebar": {
+    "dashboard": "Panel",
+    "invoices": "Faturalar",
+    "customers": "Müşteriler",
+    "products": "Ürünler",
+    "reports": "Raporlar",
+    "settings": "Ayarlar",
+    "users": "Kullanıcılar",
+    "roles": "Roller",
+    "permissions": "İzinler",
+    "logout": "Çıkış Yap",
+    "profile": "Profil",
+    "login": "Giriş Yap",
+    "register": "Kayıt Ol",
+    "expenses": "Giderler",
+    "ai": "AI Analiz"
+  },
+  "dashboard": {
+    "welcome": "Hoş geldiniz",
+    "totalSales": "Toplam Satış",
+    "activeCustomers": "Aktif Müşteri"
+  },
+  "common": {
+    "add": "Ekle",
+    "edit": "Düzenle",
+    "delete": "Sil",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "search": "Ara..."
+  }
+}
