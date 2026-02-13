@@ -109,11 +109,13 @@ export default async function ProductsPage({
                           product.currency === "USD" ? "bg-emerald-100 text-emerald-700" :
                           product.currency === "EUR" ? "bg-indigo-100 text-indigo-700" :
                           product.currency === "GBP" ? "bg-purple-100 text-purple-700" :
+                          product.currency === "MKD" ? "bg-cyan-100 text-cyan-700" :
                           "bg-orange-100 text-orange-700"
                         }`}>
                           {product.currency === "USD" ? "$ USD" :
                            product.currency === "EUR" ? "€ EUR" :
                            product.currency === "GBP" ? "£ GBP" :
+                           product.currency === "MKD" ? "ден MKD" :
                            "₺ TRY"}
                         </span>
                       </td>

@@ -221,6 +221,7 @@ export default function PurchaseForm({ customers }: { customers: Customer[] }) {
                   <SelectItem value="USD">Dolar ($)</SelectItem>
                   <SelectItem value="EUR">Euro (€)</SelectItem>
                   <SelectItem value="GBP">Sterlin (£)</SelectItem>
+                  <SelectItem value="MKD">Makedon Dinarı (MKD)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
