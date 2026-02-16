@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { EditCustomerDialog } from "@/components/dashboard/edit-customer-dialog"
 
 export default async function CustomerDetailPage({
   params,
@@ -20,33 +21,44 @@ export default async function CustomerDetailPage({
     include: { tenant: true },
   })
 
-  // Müşteriyi ve Faturalarını (Ürünleriyle beraber) Çekiyoruz
-  const customer = await prisma.customer.findUnique({
-    where: {
-      id: id,
-      tenantId: user?.tenantId,
-    },
-    include: {
-      invoices: {
-        include: { items: true }, 
-        orderBy: { date: 'desc' } 
-      },
-    },
-  })
 
-  if (!customer) notFound()
+    // Müşteriyi ve Faturalarını (Ürünleriyle beraber) Çekiyoruz
+    const customerFull = await prisma.customer.findUnique({
+        where: {
+            id: id,
+            tenantId: user?.tenantId,
+        },
+        include: {
+            invoices: {
+                include: { items: true },
+                orderBy: { date: 'desc' }
+            },
+        },
+    })
+
+    if (!customerFull) notFound()
+
+    // Sadece düz customer alanlarını ayıkla (Client Component'a geçerken)
+    const customer = {
+        id: customerFull.id,
+        name: customerFull.name,
+        email: customerFull.email,
+        phone: customerFull.phone,
+        address: customerFull.address,
+        type: customerFull.type,
+    }
 
   // --- HESAPLAMALAR ---
   
-  // 1. Toplam Ciro Hesabı (Vergiler Dahil)
-  const totalRevenue = customer.invoices.reduce((total, inv) => {
-    const invTotal = inv.items.reduce((acc, item) => {
-       const lineTotal = Number(item.price) * item.quantity
-       const tax = lineTotal * (item.vatRate / 100)
-       return acc + lineTotal + tax
+    // 1. Toplam Ciro Hesabı (Vergiler Dahil)
+    const totalRevenue = customerFull.invoices.reduce((total, inv) => {
+        const invTotal = inv.items.reduce((acc, item) => {
+             const lineTotal = Number(item.price) * item.quantity
+             const tax = lineTotal * (item.vatRate / 100)
+             return acc + lineTotal + tax
+        }, 0)
+        return total + invTotal
     }, 0)
-    return total + invTotal
-  }, 0)
 
   // Para Formatı
   const formatCurrency = (amount: number) => {
@@ -73,6 +85,7 @@ export default async function CustomerDetailPage({
             </Link>
             {/* Mobilde yazı boyutu ayarı */}
             <h1 className="text-2xl md:text-3xl font-bold text-slate-800 break-all">{customer.name}</h1>
+            <EditCustomerDialog customer={customer} />
         </div>
         
         {/* Eğer telefon varsa WhatsApp butonu göster */}
@@ -126,7 +139,7 @@ export default async function CustomerDetailPage({
                     <CardContent className="p-4 md:p-6">
                         <p className="text-sm font-medium text-slate-500">Kesilen Fatura</p>
                         <h3 className="text-xl md:text-2xl font-bold text-slate-800 mt-1">
-                            {customer.invoices.length} Adet
+                            {customerFull.invoices.length} Adet
                         </h3>
                     </CardContent>
                 </Card>
@@ -151,10 +164,10 @@ export default async function CustomerDetailPage({
                                 </tr>
                             </thead>
                             <tbody>
-                                {customer.invoices.length === 0 ? (
+                                {customerFull.invoices.length === 0 ? (
                                     <tr><td colSpan={5} className="p-4 text-center text-slate-500">Fatura bulunamadı.</td></tr>
                                 ) : (
-                                    customer.invoices.map(inv => {
+                                    customerFull.invoices.map(inv => {
                                         // Her faturanın kendi toplamını hesapla
                                         const invTotal = inv.items.reduce((acc, item) => {
                                             const total = Number(item.price) * item.quantity
