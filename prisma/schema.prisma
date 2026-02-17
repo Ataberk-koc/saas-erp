@@ -64,6 +64,8 @@ model Customer {
   tenantId  String
   tenant    Tenant @relation(fields: [tenantId], references: [id])
 
+  isDeleted Boolean  @default(false)
+
   invoices  Invoice[]
 }
 

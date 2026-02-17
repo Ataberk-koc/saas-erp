@@ -31,6 +31,7 @@ export default async function CustomersPage({
   // 2. Filtreleme Koşulları
   const whereCondition = {
     tenantId: user?.tenantId,
+    isDeleted: false,
     OR: [
       { name: { contains: query, mode: "insensitive" as const } },
       { email: { contains: query, mode: "insensitive" as const } },

@@ -44,7 +44,7 @@ export function DeleteCustomerButton({ customerId }: { customerId: string }) {
           <AlertDialogHeader>
             <AlertDialogTitle>Müşteri Silme</AlertDialogTitle>
             <AlertDialogDescription>
-              Bu müşteriyi ve ilişkili tüm faturalarını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
+              Bu müşteriyi silmek istediğinize emin misiniz? Bu işlem geri alınamaz.
             </AlertDialogDescription>
           </AlertDialogHeader>
           {error && (

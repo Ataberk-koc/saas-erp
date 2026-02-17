@@ -81,7 +81,6 @@ export async function addCustomer(formData: FormData) {
   }
 }
 
-// 👇 İŞTE BU FONKSİYON EKSİKTİ, GERİ EKLİYORUZ:
 export async function deleteCustomer(id: string) {
   const session = await auth()
   if (!session?.user?.email) return { error: "Yetkisiz işlem!" }
@@ -89,26 +88,17 @@ export async function deleteCustomer(id: string) {
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user?.tenantId) return { error: "Şirket bulunamadı!" }
 
-  // Sadece Admin silebilir
-  // if (user.role !== "ADMIN") {
-  //     return { error: "Bu işlemi sadece yöneticiler yapabilir." }
-  // }
-
   try {
-    await prisma.$transaction(async (tx) => {
-      // 1. Faturaları ve kalemlerini sil
-      const invoices = await tx.invoice.findMany({
-        where: { customerId: id }
-      })
-
-      for (const inv of invoices) {
-        await tx.invoiceItem.deleteMany({ where: { invoiceId: inv.id } })
+    // Müşteriyi gerçekten silmek yerine, "Silindi" (isDeleted=true) olarak işaretliyoruz.
+    // Böylece faturalar bozulmuyor ama müşteri ortadan kayboluyor.
+    await prisma.customer.update({
+      where: { 
+        id: id,
+        tenantId: user.tenantId
+      },
+      data: {
+        isDeleted: true
       }
-      
-      await tx.invoice.deleteMany({ where: { customerId: id } })
-
-      // 2. Müşteriyi sil
-      await tx.customer.delete({ where: { id: id } })
     })
 
     revalidatePath("/dashboard/customers")

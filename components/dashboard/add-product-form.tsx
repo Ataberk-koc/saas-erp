@@ -21,76 +21,114 @@ import {
 import { toast } from "sonner"
 import { containsXSS } from "@/lib/utils"
 
-
-
 export function AddProductForm() {
-
   const formRef = useRef<HTMLFormElement>(null)
+  
+  // 👇 KRİTİK ÇÖZÜM: useRef anında güncellenir, çift tıklamayı donanım seviyesinde engeller gibi çalışır.
+  const isSubmittingRef = useRef(false) 
+  
+  // UI'daki butonu disable yapmak için state (Görsel kilit)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState("")
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
-  const [currency, setCurrency] = useState("TRY");
-  const [unit, setUnit] = useState("Adet");
+  const [currency, setCurrency] = useState("TRY")
+  const [unit, setUnit] = useState("Adet")
 
   async function handleSave(formData: FormData) {
-    // Radix Select ile seçilen değerleri FormData'ya ekle
-    formData.set("currency", currency);
-    formData.set("unit", unit);
-    // XSS ön kontrolü (client-side)
+    // 1. REF KONTROLÜ (En hızlı kilit)
+    if (isSubmittingRef.current) return
+    
+    // 2. Kapıları kilitle
+    isSubmittingRef.current = true
+    setIsSubmitting(true)
+
+    // Form verilerini ayarla
+    formData.set("currency", currency)
+    formData.set("unit", unit)
+
+    // XSS Kontrolü
     const name = formData.get("name") as string
     if (containsXSS(name)) {
       toast.error("Ürün adında güvenlik riski oluşturan içerik tespit edildi!")
+      // Hata varsa kilitleri aç
+      isSubmittingRef.current = false
+      setIsSubmitting(false)
       return
     }
 
-    const result = await addProduct(formData) as {
-      error?: string
-      success?: boolean
-      message?: string
-      confirmationRequired?: boolean
-    }
+    try {
+      const result = await addProduct(formData) as {
+        error?: string
+        success?: boolean
+        message?: string
+        confirmationRequired?: boolean
+      }
 
-    if (result?.confirmationRequired) {
-      // Sunucu "bu ürün zaten var" dedi → formu sakla ve modal aç
-      setPendingFormData(formData)
-      setConfirmMessage(result.message || "Bu isimde bir ürün zaten mevcut. Stokları birleştirmek ister misiniz?")
-      setConfirmOpen(true)
-      return
-    }
+      if (result?.confirmationRequired) {
+        setPendingFormData(formData)
+        setConfirmMessage(result.message || "Bu isimde bir ürün zaten mevcut.")
+        setConfirmOpen(true)
+        // Modal açılsa bile form işlemini bitirmiş sayıp kilidi açıyoruz ki kullanıcı modalda takılmasın
+        return
+      }
 
-    if (result?.error) {
-      toast.error(result.error)
-    } else {
-      toast.success(result?.message || "Ürün başarıyla eklendi!")
-      formRef.current?.reset()
+      if (result?.error) {
+        toast.error(result.error)
+      } else {
+        toast.success(result?.message || "Ürün başarıyla eklendi!")
+        formRef.current?.reset()
+        // State'leri sıfırla
+        setUnit("Adet")
+        setCurrency("TRY")
+      }
+    } catch {
+      toast.error("Beklenmedik bir hata oluştu.")
+    } finally {
+      // 👇 İŞLEM BİTER BİTMEZ KİLİTLERİ AÇ
+      isSubmittingRef.current = false
+      setIsSubmitting(false)
     }
   }
 
   async function handleConfirmMerge() {
     if (!pendingFormData) return
+    
+    // Modaldaki buton için de aynı koruma
+    if (isSubmittingRef.current) return
+    isSubmittingRef.current = true
+    setIsSubmitting(true)
 
-    // forceMerge=true ekleyerek tekrar gönder
     const mergeData = new FormData()
     pendingFormData.forEach((value, key) => {
       mergeData.append(key, value)
     })
     mergeData.append("forceMerge", "true")
 
-    const result = await addProduct(mergeData) as {
-      error?: string
-      success?: boolean
-      message?: string
-    }
+    try {
+        const result = await addProduct(mergeData) as {
+            error?: string
+            success?: boolean
+            message?: string
+        }
 
-    if (result?.error) {
-      toast.error(result.error)
-    } else {
-      toast.success(result?.message || "Stoklar başarıyla birleştirildi!")
-      formRef.current?.reset()
+        if (result?.error) {
+            toast.error(result.error)
+        } else {
+            toast.success(result?.message || "Stoklar başarıyla birleştirildi!")
+            formRef.current?.reset()
+            setUnit("Adet")
+            setCurrency("TRY")
+        }
+    } catch {
+        toast.error("Birleştirme sırasında hata oluştu.")
+    } finally {
+        setPendingFormData(null)
+        setConfirmOpen(false)
+        isSubmittingRef.current = false
+        setIsSubmitting(false)
     }
-
-    setPendingFormData(null)
-    setConfirmOpen(false)
   }
 
   return (
@@ -128,7 +166,6 @@ export function AddProductForm() {
               placeholder="1"
               defaultValue="1"
               onKeyDown={(e) => {
-                // Sadece sayı, nokta, virgül, backspace, tab, ok tuşları izin ver
                 if (
                   !/[0-9.,]/.test(e.key) &&
                   !['Backspace', 'Tab', 'ArrowLeft', 'ArrowRight', 'Delete', 'Home', 'End'].includes(e.key)
@@ -192,13 +229,12 @@ export function AddProductForm() {
             </Select>
           </div>
 
-          <Button type="submit" className="w-full md:w-auto">
-            Ekle
+          <Button type="submit" className="w-full md:w-auto" disabled={isSubmitting}>
+            {isSubmitting ? "Ekleniyor..." : "Ekle"}
           </Button>
         </form>
       </CardContent>
 
-      {/* Mükerrer ürün onay modalı */}
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -209,8 +245,8 @@ export function AddProductForm() {
             <AlertDialogCancel onClick={() => { setPendingFormData(null); setConfirmOpen(false) }}>
               Hayır, İptal Et
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmMerge}>
-              Evet, Stokları Birleştir
+            <AlertDialogAction onClick={handleConfirmMerge} disabled={isSubmitting}>
+               {isSubmitting ? "İşleniyor..." : "Evet, Stoğa Ekle"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
